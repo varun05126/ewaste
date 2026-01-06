@@ -1,242 +1,155 @@
-# ewaste_backend/core/views.py
-
-from django.shortcuts import render, redirect
-from django.core.mail import send_mail, get_connection
-from django.conf import settings # Crucial for accessing settings variables
-from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt, csrf_protect
-from django.contrib import messages
-from django.contrib.auth.models import User
-from django.contrib.auth import authenticate, login as auth_login, logout as auth_logout
-
-from .forms import PickupRequestForm
-from .models import PickupRequest
-
-import ssl
-import certifi
-import traceback
+import base64
 import google.generativeai as genai
-from .forms import PickupRequestForm, ContactForm 
-from .models import PickupRequest, ContactMessage 
+from django.http import JsonResponse, HttpResponse
+from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
+from django.views.decorators.http import require_http_methods
+from django.shortcuts import render, redirect
+from django.conf import settings
 
-def contact(request):
-    if request.method == 'POST':
-        form = ContactForm(request.POST)
-        if form.is_valid():
-            contact_message = form.save(commit=False)
-            contact_message.save()
-
-            # Optional: Send an email notification to yourself (admin)
-            try:
-                ssl_context = ssl.create_default_context(cafile=certifi.where())
-                connection = get_connection(ssl_context=ssl_context)
-                send_mail(
-                    subject=f"New Contact Message: {contact_message.subject}",
-                    message=(
-                        f"From: {contact_message.name} ({contact_message.email})\n"
-                        f"Subject: {contact_message.subject}\n\n"
-                        f"Message:\n{contact_message.message}"
-                    ),
-                    from_email=settings.EMAIL_HOST_USER,
-                    recipient_list=[settings.ADMIN_EMAIL], # You'll need to define ADMIN_EMAIL in settings.py
-                    connection=connection,
-                    fail_silently=False,
-                )
-                messages.success(request, 'Your message has been sent successfully!')
-            except Exception as e:
-                print(f"[EMAIL ERROR] Failed to send contact notification email: {e}")
-                traceback.print_exc()
-                messages.warning(request, 'Your message was saved, but we could not send a notification email.')
-
-            return redirect('contact') # Redirect to the same page or a thank you page
-        else:
-            messages.error(request, 'Please correct the errors below.')
-    else:
-        form = ContactForm() # Create an empty form for GET requests
-
-    context = {'form': form}
-    return render(request, 'contact.html', context)
-
-# ---------------------------
-# 📄 Static Page Views
-# ---------------------------
-
-def homepage(request):
-    return render(request, 'index.html')
-
-def services(request):
-    return render(request, 'services.html')
-
-def about(request):
-    return render(request, 'about.html')
-
-def team(request):
-    return render(request, 'team.html')
-
-def contact(request):
-    return render(request, 'contact.html')
-
-def data_destruction(request):
-    return render(request, 'data_destruction.html')
-
-def refurbishment(request): # Renamed from 're' context
-    return render(request, 'recycling_refurbishment.html')
+# ============================================================
+# CONFIGURE GEMINI (GLOBAL)
+# ============================================================
+genai.configure(api_key=settings.GEMINI_API_KEY)
 
 
-# ---------------------------
-# 🧑‍💻 User Authentication
-# ---------------------------
-
-@csrf_protect
-def signup(request):
-    if request.method == 'POST':
-        name = request.POST.get('name')
-        email = request.POST.get('email')
-        password = request.POST.get('password')
-
-        if User.objects.filter(username=email).exists():
-            messages.error(request, "An account with this email already exists.")
-            return redirect('signup')
-
-        user = User.objects.create_user(username=email, email=email, password=password)
-        user.first_name = name
-        user.save()
-
-        if user.id:
-            messages.success(request, f"Welcome {name}, your account was created successfully!")
-            return redirect('login')
-        else:
-            messages.error(request, "Signup failed. Please try again.")
-
-    return render(request, 'signup.html')
+# ============================================================
+# STATIC PAGE ROUTES
+# ============================================================
+def homepage(request): return render(request, "index.html")
+def services(request): return render(request, "services.html")
+def about(request): return render(request, "about.html")
+def team(request): return render(request, "team.html")
+def contact(request): return render(request, "contact.html")
+def login(request): return render(request, "login.html")
+def signup(request): return render(request, "signup.html")
+def pickup(request): return render(request, "pickup.html")
+def reqs(request): return render(request, "reqs.html")
+def detection(request): return render(request, "detection.html")
+def data_destruction(request): return render(request, "data-destruction.html")
+def refurbishment(request): return render(request, "refurbishment.html")
 
 
-@csrf_protect
-def login(request):
-    if request.method == 'POST':
-        email = request.POST.get('email')
-        password = request.POST.get('password')
-
-        user = authenticate(request, username=email, password=password)
-
-        if user is not None:
-            auth_login(request, user)
-            messages.success(request, f"Welcome back, {user.first_name}!")
-            return redirect('homepage')
-        else:
-            messages.error(request, "Invalid email or password. Please try again.")
-
-    return render(request, 'login.html')
+# ============================================================
+# CAMERA PAGE
+# ============================================================
+def ewaste_camera_page(request):
+    return render(request, "ewaste-camera.html")
 
 
-def logout_view(request):
-    auth_logout(request)
-    messages.info(request, "You have been logged out.")
-    return redirect('login')
+# ============================================================
+# STRICT E-WASTE DETECTION USING GEMINI 2.0 FLASH
+# ============================================================
+@csrf_exempt
+def camera_ai_api(request):
+    if request.method != "POST":
+        return JsonResponse({"error": "Invalid request"}, status=400)
+
+    image_data = request.POST.get("image")
+
+    # ---- Validate Base64 ----
+    if not image_data or "," not in image_data:
+        return JsonResponse({"detected": "error", "caption": "invalid-image"}, status=400)
+
+    try:
+        header, base64_data = image_data.split(",", 1)
+
+        # must be jpeg or png
+        if not (
+            header.startswith("data:image/jpeg") or
+            header.startswith("data:image/png")
+        ):
+            return JsonResponse({
+                "detected": "error",
+                "caption": "unsupported-format"
+            }, status=400)
+
+        image_bytes = base64.b64decode(base64_data, validate=True)
+
+        if len(image_bytes) < 4000:  # too small = corrupted
+            return JsonResponse({
+                "detected": "error",
+                "caption": "too-small-image"
+            }, status=400)
+
+    except Exception:
+        return JsonResponse({
+            "detected": "error",
+            "caption": "bad-image-data"
+        }, status=400)
+
+    # ---- Strict detection prompt ----
+    strict_prompt = """
+    You are an object identification system.
+
+    RULES:
+    - Return ONLY a single object name.
+    - No sentences, punctuation or explanation.
+    - Electronics list: phone, charger, adapter, cable, battery, laptop, camera,
+      mouse, keyboard, earbuds, airpods, webcam, powerbank, speaker, remote.
+    - If unsure: still guess one object.
+    """
+
+    try:
+        model = genai.GenerativeModel("gemini-2.0-flash")
+
+        response = model.generate_content([
+            strict_prompt,
+            {"mime_type": "image/jpeg", "data": image_bytes}
+        ])
+
+        caption = response.text.strip().lower()
+        caption = caption.split()[0]  # only one word
+
+    except Exception as e:
+        print("Gemini Detection Error:", e)
+        return JsonResponse({
+            "detected": "error",
+            "caption": "ai-error"
+        })
+
+    # ---- Check if electronic ----
+    ewaste_keywords = [
+        "phone", "mobile", "smartphone",
+        "charger", "adapter", "cable", "wire", "usb",
+        "battery", "powerbank",
+        "earbuds", "airpods",
+        "laptop", "mouse", "keyboard",
+        "speaker", "camera", "webcam",
+        "remote", "gadget", "device"
+    ]
+
+    detected = "ewaste" if any(k in caption for k in ewaste_keywords) else "not-ewaste"
+
+    return JsonResponse({
+        "detected": detected,
+        "caption": caption
+    })
 
 
-# ---------------------------
-# 🚚 Pickup Request Handling
-# ---------------------------
-
-def pickup(request):
-    # Prepare context with initial form or form with POST data
-    context = {
-        'form': PickupRequestForm(),
-        # REMOVED: 'MAPPLS_API_KEY': settings.MAPPLS_API_KEY, # No longer passing API key since map is not desired
-    }
-
-    if request.method == 'POST':
-        form = PickupRequestForm(request.POST)
-        context['form'] = form # Update form in context with POST data for re-rendering
-
-        if form.is_valid():
-            pickup_request = form.save(commit=False) # Get the instance but don't save yet
-
-            # The latitude and longitude fields were related to map, now assume they are not present
-            # or will be handled differently if you re-introduce coordinates without a map later.
-            # For now, if the form still has lat/lon fields, they will just be saved as whatever is submitted.
-
-            pickup_request.save() # Save the request
-
-            # --- Email Sending ---
-            try:
-                ssl_context = ssl.create_default_context(cafile=certifi.where())
-                connection = get_connection(ssl_context=ssl_context)
-
-                send_mail(
-                    subject='E-Waste Pickup Confirmation',
-                    message=(
-                        f"Dear {form.cleaned_data['name']},\n\n"
-                        "Thank you for your e-waste pickup request. We will reach out soon."
-                    ),
-                    from_email=settings.EMAIL_HOST_USER,
-                    recipient_list=[form.cleaned_data['email']],
-                    connection=connection,
-                    fail_silently=False,
-                )
-                messages.success(request, 'Your pickup request has been submitted successfully!')
-                return redirect('reqs') # Redirect on success
-            except Exception as e:
-                print(f"[EMAIL ERROR] Failed to send email: {e}")
-                traceback.print_exc()
-                messages.error(request, 'Email could not be sent. Please try again.')
-                # If email fails, re-render the page with the form and the error message
-                return render(request, 'pickup.html', context)
-        else:
-            # Form is NOT valid; errors will be displayed by the template
-            messages.error(request, 'Please correct the errors below.')
-
-    # Render the form (for GET requests or invalid POST requests)
-    return render(request, 'pickup.html', context)
-
-
-def reqs(request):
-    return render(request, 'reqs.html')
-
-
-# ---------------------------
-# 📋 Admin View
-# ---------------------------
-
-def list_pickup_requests(request):
-    requests = PickupRequest.objects.all().order_by('-created_at')
-    return render(request, 'list_pickup_requests.html', {'pickup_requests': requests})
-
-
-# ---------------------------
-# 🤖 Gemini Chatbot Integration
-# ---------------------------
-
+# ============================================================
+# CHATBOT USING GEMINI 2.0 FLASH
+# ============================================================
 @csrf_exempt
 def chatbot_response(request):
-    if request.method == 'POST':
-        user_message = request.POST.get('message', '')
+    if request.method != "POST":
+        return JsonResponse({"response": "Invalid request"}, status=400)
 
-        if not user_message:
-            return JsonResponse({'error': 'No message provided'}, status=400)
+    user_message = request.POST.get("message", "")
 
-        # Removed the direct settings.GEMINI_API_KEY access check here for cleaner view
-        # assuming it's correctly handled in settings.py loading.
-        # It's better to let genai.configure fail if key is bad or missing.
-        try:
-            genai.configure(api_key=settings.GEMINI_API_KEY) # Access GEMINI_API_KEY from settings
-            model = genai.GenerativeModel('gemini-1.5-flash')
-            chat_session = model.start_chat(history=[])
-            response = chat_session.send_message(user_message)
-            chatbot_reply = response.text
+    if not user_message:
+        return JsonResponse({"response": "Please enter a message."})
 
-            return JsonResponse({'response': chatbot_reply})
+    try:
+        model = genai.GenerativeModel("gemini-2.0-flash")
 
-        except Exception as e:
-            print(f"[GEMINI ERROR] {e}")
-            traceback.print_exc()
-            # Provide a more user-friendly error if API key is truly the problem
-            if "authentication" in str(e).lower() or "api key" in str(e).lower():
-                return JsonResponse(
-                    {'error': 'Gemini API key is invalid or not configured on the server.'},
-                    status=500
-                )
-            return JsonResponse({'error': str(e)}, status=500)
+        reply = model.generate_content(
+            f"You are an e-waste guide. Answer briefly.\nUser: {user_message}"
+        )
 
-    return JsonResponse({'error': 'Only POST requests are allowed'}, status=405)
+        bot_reply = reply.text.strip()
+
+    except Exception as e:
+        print("Gemini Chatbot Error:", e)
+        bot_reply = "Sorry, technical issue occurred."
+
+    return JsonResponse({"response": bot_reply})

@@ -149,19 +149,32 @@
     </style>
 </head>
 <body>
-    <nav>
-        <div class="logo">E-Waste</div>
-        <ul>
-            <li><a href="{% url 'homepage' %}">Home</a></li>
-            <li><a href="{% url 'services' %}">Services</a></li>
-            <li><a href="{% url 'about' %}">About</a></li>
-            <li><a href="{% url 'team' %}">Team</a></li>
-            <li><a href="{% url 'contact' %}">Contact</a></li>
-            <li><a href="{% url 'login' %}">Login</a></li>
-            <li><a href="{% url 'signup' %}">Signup</a></li>
-            <li><a href="{% url 'pickup' %}">Pickup Request</a></li>
-        </ul>
-    </nav>
+     <nav>
+    <div class="logo">E-Waste</div>
+    <ul>
+        <li><a href="{% url 'homepage' %}">Home</a></li>
+        <li><a href="{% url 'services' %}">Services</a></li>
+        <li><a href="{% url 'about' %}">About</a></li>
+        <li><a href="{% url 'team' %}">Team</a></li>
+        <li><a href="{% url 'contact' %}">Contact</a></li>
+        <li><a href="{% url 'login' %}">Login</a></li>
+        <li><a href="{% url 'signup' %}">Signup</a></li>
+
+        <!-- 📷 NEW CAMERA AI DETECTION BUTTON -->
+        <li>
+            <a href="{% url 'ewaste_camera_page' %}"
+               style="
+                   padding: 8px 14px;
+                   background:#28a745;
+                   color:white;
+                   border-radius:6px;
+                   font-weight:bold;
+               ">
+               📷 Detect E-Waste
+            </a>
+        </li>
+    </ul>
+</nav>
     <header>
         Contact Us
     </header>
@@ -196,14 +209,17 @@
             </ul>
         {% endif %}
 
-        <form method="post">
-            {% csrf_token %}
+       <form method="post">
+    {% csrf_token %}
 
-            {# ONLY THIS LINE IS NEEDED TO RENDER ALL FORM FIELDS #}
-            {{ form.as_p }}
+    {{ form.as_p }}
 
-            <button type="submit">Send Message</button>
-        </form>
+    <label for="message">Message</label>
+    <textarea name="message" id="message" rows="5" placeholder="Type your message here..."></textarea>
+
+    <button type="submit">Send Message</button>
+</form>
+
     </div>
 
     <footer>

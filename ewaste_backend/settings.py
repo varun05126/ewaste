@@ -20,7 +20,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Load GEMINI_API_KEY from environment variable.
 # It's CRITICAL that 'your_actual_valid_gemini_api_key_here' is in your .env file
-GEMINI_API_KEY = os.environ.get('AIzaSyDsaa3g9zPaUofnBnAVCoFm-kyxVOxhfyE', '')
+
+GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', '')
 
 
 # ------------------------

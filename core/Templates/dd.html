@@ -94,19 +94,32 @@
 </head>
 <body>
     <header>
-        <nav>
-            <div class="logo">E-Waste</div>
-            <ul>
-                <li><a href="{% url 'homepage' %}">Home</a></li>
-                <li><a href="{% url 'services' %}">Services</a></li>
-                <li><a href="{% url 'about' %}">About</a></li>
-                <li><a href="{% url 'team' %}">Team</a></li>
-                <li><a href="{% url 'contact' %}">Contact</a></li>
-                <li><a href="{% url 'login' %}">Login</a></li>
-                <li><a href="{% url 'signup' %}">Signup</a></li>
-                <li><a href="{% url 'pickup' %}">Pickup Request</a></li>
-            </ul>
-        </nav>
+         <nav>
+    <div class="logo">E-Waste</div>
+    <ul>
+        <li><a href="{% url 'homepage' %}">Home</a></li>
+        <li><a href="{% url 'services' %}">Services</a></li>
+        <li><a href="{% url 'about' %}">About</a></li>
+        <li><a href="{% url 'team' %}">Team</a></li>
+        <li><a href="{% url 'contact' %}">Contact</a></li>
+        <li><a href="{% url 'login' %}">Login</a></li>
+        <li><a href="{% url 'signup' %}">Signup</a></li>
+
+        <!-- 📷 NEW CAMERA AI DETECTION BUTTON -->
+        <li>
+            <a href="{% url 'ewaste_camera_page' %}"
+               style="
+                   padding: 8px 14px;
+                   background:#28a745;
+                   color:white;
+                   border-radius:6px;
+                   font-weight:bold;
+               ">
+               📷 Detect E-Waste
+            </a>
+        </li>
+    </ul>
+</nav>
     </header>
 
     <div class="content-container">

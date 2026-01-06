@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>E-Waste AI Detection</title>
+    <style>
+        body {
+            font-family: Arial;
+            text-align: center;
+            padding: 30px;
+            background: #f4f4f4;
+        }
+
+        #wrapper {
+            position: relative;
+            display: inline-block;
+        }
+
+        #camera {
+            border-radius: 12px;
+            pointer-events: none; /* FIX for Safari selection */
+        }
+
+        #selectionBox {
+            position: absolute;
+            border: 3px dashed #00aaff;
+            display: none;
+            pointer-events: none;
+        }
+
+        #result-box {
+            margin-top: 25px;
+            font-size: 28px;
+            padding: 15px 25px;
+            border-radius: 12px;
+            font-weight: bold;
+            width: 280px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .ewaste {
+            background: #28a745;
+            color: white;
+        }
+
+        .not-ewaste {
+            background: #dc3545;
+            color: white;
+        }
+
+        button {
+            padding: 12px 22px;
+            font-size: 18px;
+            border: none;
+            border-radius: 8px;
+            background: #333;
+            color: white;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+<h1>E-Waste AI Detection</h1>
+
+<div id="wrapper">
+    <video id="camera" width="400" autoplay></video>
+    <div id="selectionBox"></div>
+</div>
+
+<br><br>
+<button id="detectButton">Detect</button>
+
+<div id="result-box">Draw a box → Click Detect</div>
+
+<!-- Hidden canvases -->
+<canvas id="fullCanvas" style="display:none;"></canvas>
+<canvas id="cropCanvas" style="display:none;"></canvas>
+
+<script>
+/* ---------------- CAMERA ------------------- */
+const video = document.getElementById("camera");
+navigator.mediaDevices.getUserMedia({ video: true })
+    .then(stream => video.srcObject = stream);
+
+/* --------------- SELECTION BOX ------------- */
+let selecting = false;
+let startX = 0, startY = 0;
+
+const wrapper = document.getElementById("wrapper");
+const selectionBox = document.getElementById("selectionBox");
+
+wrapper.addEventListener("mousedown", (e) => {
+    selecting = true;
+    const r = wrapper.getBoundingClientRect();
+    startX = e.clientX - r.left;
+    startY = e.clientY - r.top;
+
+    selectionBox.style.left = startX + "px";
+    selectionBox.style.top = startY + "px";
+    selectionBox.style.width = "0px";
+    selectionBox.style.height = "0px";
+    selectionBox.style.display = "block";
+});
+
+wrapper.addEventListener("mousemove", (e) => {
+    if (!selecting) return;
+
+    const r = wrapper.getBoundingClientRect();
+    let x = e.clientX - r.left;
+    let y = e.clientY - r.top;
+
+    selectionBox.style.left = Math.min(startX, x) + "px";
+    selectionBox.style.top = Math.min(startY, y) + "px";
+    selectionBox.style.width = Math.abs(x - startX) + "px";
+    selectionBox.style.height = Math.abs(y - startY) + "px";
+});
+
+wrapper.addEventListener("mouseup", () => selecting = false);
+
+/* -------------- DETECT BUTTON -------------- */
+document.getElementById("detectButton").addEventListener("click", cropAndSend);
+
+function cropAndSend() {
+    const rect = selectionBox.getBoundingClientRect();
+    const vRect = video.getBoundingClientRect();
+
+    console.log("Selection:", rect.width, rect.height);
+
+    if (rect.width < 10 || rect.height < 10) {
+        alert("Please draw a proper selection box around the object.");
+        return;
+    }
+
+    const sx = rect.left - vRect.left;
+    const sy = rect.top - vRect.top;
+    const sw = rect.width;
+    const sh = rect.height;
+
+    const scaleX = video.videoWidth / vRect.width;
+    const scaleY = video.videoHeight / vRect.height;
+
+    let fullCanvas = document.getElementById("fullCanvas");
+    fullCanvas.width = video.videoWidth;
+    fullCanvas.height = video.videoHeight;
+    fullCanvas.getContext("2d").drawImage(video, 0, 0);
+
+    let cropCanvas = document.getElementById("cropCanvas");
+    cropCanvas.width = sw * scaleX;
+    cropCanvas.height = sh * scaleY;
+
+    cropCanvas.getContext("2d").drawImage(
+        fullCanvas,
+        sx * scaleX,
+        sy * scaleY,
+        sw * scaleX,
+        sh * scaleY,
+        0, 0,
+        cropCanvas.width,
+        cropCanvas.height
+    );
+
+    const croppedImage = cropCanvas.toDataURL("image/jpeg", 1.0);
+
+    console.log("Sending image...");
+
+    fetch("/api/camera-detect/", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: "image=" + encodeURIComponent(croppedImage)
+    })
+    .then(res => res.json())
+    .then(data => {
+        console.log("Server response:", data);
+        updateUI(data.detected);
+    })
+    .catch(err => console.error("Fetch error:", err));
+}
+
+/* -------------- UI UPDATE ------------------- */
+function updateUI(result) {
+    const box = document.getElementById("result-box");
+    if (result === "ewaste") {
+        box.textContent = "EWASTE";
+        box.className = "ewaste";
+    } else {
+        box.textContent = "NOT-EWASTE";
+        box.className = "not-ewaste";
+    }
+}
+</script>
+
+</body>
+</html>

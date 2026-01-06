@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>E-Waste AI Detection</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f5f5f5;
+            text-align: center;
+            padding: 20px;
+        }
+
+        h1 {
+            font-size: 32px;
+            margin-bottom: 5px;
+        }
+
+        #video-box {
+            background: white;
+            width: 420px;
+            margin: auto;
+            padding: 15px;
+            border-radius: 12px;
+            box-shadow: 0px 3px 10px rgba(0,0,0,0.15);
+        }
+
+        video {
+            width: 100%;
+            border-radius: 10px;
+        }
+
+        .detect-btn {
+            margin-top: 15px;
+            background: #222;
+            padding: 12px 22px;
+            border-radius: 8px;
+            color: white;
+            font-size: 18px;
+            cursor: pointer;
+            border: none;
+        }
+
+        /* RESULT BOX */
+        .ewaste-box {
+            background:#28a745;
+            color:#fff;
+            padding:18px;
+            border-radius:10px;
+            width:280px;
+            margin:20px auto;
+            font-size:22px;
+            font-weight:bold;
+        }
+
+        .not-ewaste-box {
+            background:#dc3545;
+            color:#fff;
+            padding:18px;
+            border-radius:10px;
+            width:280px;
+            margin:20px auto;
+            font-size:22px;
+            font-weight:bold;
+        }
+
+        #autoToggle {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+
+        #auto-label {
+            font-size: 18px;
+            margin-left: 8px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1>E-Waste AI Detection</h1>
+    <p id="subtext">Auto-detecting every 1 second...</p>
+
+    <!-- AUTO-DETECT TOGGLE -->
+    <div style="margin-bottom: 20px;">
+        <input type="checkbox" id="autoToggle" checked>
+        <label id="auto-label">Auto Detect</label>
+    </div>
+
+    <!-- CAMERA AREA -->
+    <div id="video-box">
+        <video id="camera" autoplay></video>
+        <button class="detect-btn" id="detectButton">Manual Detect</button>
+    </div>
+
+    <!-- RESULT -->
+    <div id="result-box" class="not-ewaste-box">Waiting...</div>
+    <div id="object-name" style="font-size:18px; color:#555;">Object: —</div>
+
+    <!-- Hidden canvas -->
+    <canvas id="hiddenCanvas" style="display:none;"></canvas>
+
+<script>
+////////////////////////////////////////////////////////////////////////////////
+//  AUDIO UNLOCK — REQUIRED FOR SAFARI & CHROME
+////////////////////////////////////////////////////////////////////////////////
+document.body.addEventListener("click", function enableAudio() {
+    let a1 = document.getElementById("sound-detect");
+    let a2 = document.getElementById("sound-ewaste");
+    let a3 = document.getElementById("sound-not-ewaste");
+
+    a1.play().catch(()=>{});
+    a2.play().catch(()=>{});
+    a3.play().catch(()=>{});
+
+    document.body.removeEventListener("click", enableAudio);
+});
+
+////////////////////////////////////////////////////////////////////////////////
+//  CAMERA STREAM
+////////////////////////////////////////////////////////////////////////////////
+
+const video = document.getElementById("camera");
+navigator.mediaDevices.getUserMedia({ video: true })
+.then(stream => video.srcObject = stream);
+
+// AUTO DETECT CONTROL
+let autoMode = true;
+let autoInterval = null;
+
+document.getElementById("autoToggle").addEventListener("change", function () {
+    autoMode = this.checked;
+
+    if (autoMode) {
+        document.getElementById("subtext").innerText = "Auto-detecting every 1 second...";
+        startAutoDetect();
+    } else {
+        document.getElementById("subtext").innerText = "Manual mode enabled";
+        stopAutoDetect();
+    }
+});
+
+// Start auto mode by default
+startAutoDetect();
+
+function startAutoDetect() {
+    stopAutoDetect();
+    autoInterval = setInterval(() => {
+        captureAndSend();
+    }, 1000);
+}
+
+function stopAutoDetect() {
+    if (autoInterval) {
+        clearInterval(autoInterval);
+        autoInterval = null;
+    }
+}
+
+// Manual Detect
+document.getElementById("detectButton").addEventListener("click", () => {
+    captureAndSend();
+});
+
+////////////////////////////////////////////////////////////////////////////////
+// CAPTURE FRAME
+////////////////////////////////////////////////////////////////////////////////
+
+function captureAndSend() {
+    const canvas = document.getElementById("hiddenCanvas");
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+
+    const ctx = canvas.getContext("2d");
+    ctx.drawImage(video, 0, 0);
+
+    const imageData = canvas.toDataURL("image/jpeg");
+
+    fetch("/api/camera-detect/", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: "image=" + encodeURIComponent(imageData)
+    })
+    .then(res => res.json())
+    .then(data => updateUI(data.detected, data.caption))
+    .catch(err => updateUI("not-ewaste", "model_error"));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// UI UPDATE + SOUND
+////////////////////////////////////////////////////////////////////////////////
+
+function updateUI(result, caption) {
+    const box = document.getElementById("result-box");
+    const name = document.getElementById("object-name");
+
+    if (!caption) caption = "unknown";
+
+    // Always play “object detected” sound
+    document.getElementById("sound-detect").play().catch(()=>{});
+
+    if (result === "ewaste") {
+        box.className = "ewaste-box";
+        box.innerHTML = "EWASTE ✔";
+
+        document.getElementById("sound-ewaste").play().catch(()=>{});
+    } else {
+        box.className = "not-ewaste-box";
+        box.innerHTML = "NOT EWASTE ✗";
+
+        document.getElementById("sound-not-ewaste").play().catch(()=>{});
+    }
+
+    name.innerText = "Object: " + caption;
+}
+</script>
+
+<!-- AUDIO FILES -->
+<audio id="sound-detect" src="/static/sounds/object_detected.mp3"></audio>
+<audio id="sound-ewaste" src="/static/sounds/ewaste.mp3"></audio>
+<audio id="sound-not-ewaste" src="/static/sounds/not_ewaste.mp3"></audio>
+
+</body>
+</html>
