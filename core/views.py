@@ -1,5 +1,6 @@
 import base64
-import google.generativeai as genai
+from groq import Groq
+
 from django.http import JsonResponse, HttpResponse
 from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
 from django.views.decorators.http import require_http_methods
@@ -7,10 +8,9 @@ from django.shortcuts import render, redirect
 from django.conf import settings
 
 # ============================================================
-# CONFIGURE GEMINI (GLOBAL)
+# CONFIGURE GROQ (GLOBAL)
 # ============================================================
-genai.configure(api_key=settings.GEMINI_API_KEY)
-
+client = Groq(api_key=settings.GROQ_API_KEY)
 
 # ============================================================
 # STATIC PAGE ROUTES
@@ -28,16 +28,14 @@ def detection(request): return render(request, "detection.html")
 def data_destruction(request): return render(request, "data-destruction.html")
 def refurbishment(request): return render(request, "refurbishment.html")
 
-
 # ============================================================
 # CAMERA PAGE
 # ============================================================
 def ewaste_camera_page(request):
     return render(request, "ewaste-camera.html")
 
-
 # ============================================================
-# STRICT E-WASTE DETECTION USING GEMINI 2.0 FLASH
+# STRICT E-WASTE DETECTION USING GROQ VISION
 # ============================================================
 @csrf_exempt
 def camera_ai_api(request):
@@ -55,8 +53,8 @@ def camera_ai_api(request):
 
         # must be jpeg or png
         if not (
-            header.startswith("data:image/jpeg") or
-            header.startswith("data:image/png")
+            header.startswith("data:image/jpeg")
+            or header.startswith("data:image/png")
         ):
             return JsonResponse({
                 "detected": "error",
@@ -90,18 +88,32 @@ def camera_ai_api(request):
     """
 
     try:
-        model = genai.GenerativeModel("gemini-2.0-flash")
+        # Groq vision call
+        chat_completion = client.chat.completions.create(
+            model="llama-3.2-90b-vision-preview",
+            messages=[
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": strict_prompt},
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": f"data:image/jpeg;base64,{base64.b64encode(image_bytes).decode('utf-8')}",
+                            },
+                        },
+                    ],
+                }
+            ],
+            temperature=0.2,
+        )
 
-        response = model.generate_content([
-            strict_prompt,
-            {"mime_type": "image/jpeg", "data": image_bytes}
-        ])
-
-        caption = response.text.strip().lower()
+        # Groq returns a list of content parts; first part is text
+        caption = chat_completion.choices[0].message.content[0].text.strip().lower()
         caption = caption.split()[0]  # only one word
 
     except Exception as e:
-        print("Gemini Detection Error:", e)
+        print("Groq Detection Error:", e)
         return JsonResponse({
             "detected": "error",
             "caption": "ai-error"
@@ -125,9 +137,8 @@ def camera_ai_api(request):
         "caption": caption
     })
 
-
 # ============================================================
-# CHATBOT USING GEMINI 2.0 FLASH
+# CHATBOT USING GROQ
 # ============================================================
 @csrf_exempt
 def chatbot_response(request):
@@ -140,16 +151,26 @@ def chatbot_response(request):
         return JsonResponse({"response": "Please enter a message."})
 
     try:
-        model = genai.GenerativeModel("gemini-2.0-flash")
-
-        reply = model.generate_content(
-            f"You are an e-waste guide. Answer briefly.\nUser: {user_message}"
+        completion = client.chat.completions.create(
+            model="llama-3.1-8b-instant",
+            messages=[
+                {
+                    "role": "system",
+                    "content": "You are an e-waste guide. Answer briefly.",
+                },
+                {
+                    "role": "user",
+                    "content": user_message,
+                },
+            ],
+            temperature=0.4,
+            max_tokens=256,
         )
 
-        bot_reply = reply.text.strip()
+        bot_reply = completion.choices[0].message.content
 
     except Exception as e:
-        print("Gemini Chatbot Error:", e)
+        print("Groq Chatbot Error:", e)
         bot_reply = "Sorry, technical issue occurred."
 
     return JsonResponse({"response": bot_reply})
