@@ -4,6 +4,7 @@
 from pathlib import Path
 import os
 from dotenv import load_dotenv
+from django.contrib.messages import constants as messages
 
 # Load environment variables from .env file (local dev)
 load_dotenv()
@@ -16,10 +17,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # ------------------------
 # API Keys for External Services
 # ------------------------
-# Gemini (if still used anywhere)
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
-
-# Groq / other LLM provider (new)
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
 
 # ------------------------
@@ -32,10 +30,13 @@ SECRET_KEY = os.environ.get(
 
 DEBUG = os.environ.get("DJANGO_DEBUG", "True") == "True"
 
-ALLOWED_HOSTS = os.environ.get(
-    "DJANGO_ALLOWED_HOSTS",
-    "127.0.0.1,localhost",
-).split(",")
+# Allow configuring hosts via env; fall back to local + Render domain
+default_hosts = "127.0.0.1,localhost,ewaste-backend-ewia.onrender.com"
+ALLOWED_HOSTS = os.environ.get("DJANGO_ALLOWED_HOSTS", default_hosts).split(",")
+
+# In dev, you can optionally open it up completely:
+if DEBUG and os.environ.get("DJANGO_ALLOW_ALL_HOSTS", "False") == "True":
+    ALLOWED_HOSTS = ["*"]
 
 # ------------------------
 # Installed apps
@@ -142,7 +143,7 @@ EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD", "")
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 
 # ------------------------
-# DRF settings (optional)
+# DRF settings
 # ------------------------
 REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": [
@@ -157,8 +158,6 @@ REST_FRAMEWORK = {
 # ------------------------
 # Messaging settings
 # ------------------------
-from django.contrib.messages import constants as messages
-
 MESSAGE_TAGS = {
     messages.DEBUG: "alert-info",
     messages.INFO: "alert-info",
