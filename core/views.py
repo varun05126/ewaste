@@ -10,9 +10,30 @@ from django.shortcuts import render
 from django.conf import settings
 
 # ============================================================
-# CONFIGURE GROQ (TEXT + VISION)
+# CONFIGURE GROQ (TEXT ONLY)
 # ============================================================
 groq_client = Groq(api_key=settings.GROQ_API_KEY)
+
+# Predefined e-waste items
+EWASTE_ITEMS = {
+    "phone": "smartphone",
+    "charger": "charger",
+    "laptop": "laptop",
+    "tablet": "tablet",
+    "headphones": "headphones",
+    "keyboard": "keyboard",
+    "mouse": "mouse",
+    "monitor": "monitor",
+    "cable": "cable",
+    "battery": "battery",
+    "powerbank": "powerbank",
+    "speaker": "speaker",
+    "camera": "camera",
+    "earbuds": "earbuds",
+    "adapter": "adapter",
+    "remote": "remote",
+    "webcam": "webcam",
+}
 
 # ============================================================
 # STATIC PAGE ROUTES
@@ -60,16 +81,18 @@ def ewaste_camera_page(request):
     return render(request, "ewaste-camera.html")
 
 # ============================================================
-# E-WASTE DETECTION USING GROQ VISION
+# E-WASTE DETECTION - MANUAL SELECTION
 # ============================================================
 @csrf_exempt
 def camera_ai_api(request):
     if request.method != "POST":
         return JsonResponse({"error": "Invalid request"}, status=400)
 
+    # Get either auto-detected item or manual selection
     image_data = request.POST.get("image")
+    manual_item = request.POST.get("item")  # Manual selection from user
 
-    # ---- Validate Base64 ----
+    # ---- Validate image ----
     if not image_data or "," not in image_data:
         return JsonResponse(
             {"detected": "error", "caption": "invalid-image"}, 
@@ -79,7 +102,6 @@ def camera_ai_api(request):
     try:
         header, base64_data = image_data.split(",", 1)
 
-        # must be jpeg or png
         if not (
             header.startswith("data:image/jpeg")
             or header.startswith("data:image/png")
@@ -91,14 +113,13 @@ def camera_ai_api(request):
 
         image_bytes = base64.b64decode(base64_data, validate=True)
 
-        # too small = corrupted / blank
         if len(image_bytes) < 4000:
             return JsonResponse(
                 {"detected": "error", "caption": "too-small-image"},
                 status=400,
             )
 
-        # Convert to PIL Image
+        # Validate image
         img = Image.open(io.BytesIO(image_bytes)).convert("RGB")
 
     except Exception:
@@ -107,55 +128,17 @@ def camera_ai_api(request):
             status=400,
         )
 
-    try:
-        # Use Groq for vision (completely free, no API issues)
-        prompt = (
-            "Identify the single main object in this image. "
-            "Return only one word (e.g., phone, charger, laptop, battery, cable, camera, remote, keyboard, earbuds, mouse, adapter, speaker, webcam, powerbank). "
-            "No punctuation, no explanation."
-        )
-        
-        response = groq_client.chat.completions.create(
-            model="llama-3.2-90b-vision-preview",
-            messages=[
-                {
-                    "role": "user",
-                    "content": [
-                        {
-                            "type": "text",
-                            "text": prompt,
-                        },
-                        {
-                            "type": "image_url",
-                            "image_url": {
-                                "url": f"data:image/jpeg;base64,{base64_data}",
-                            },
-                        },
-                    ],
-                }
-            ],
-            max_tokens=16,
-            temperature=0.2,
-        )
-
-        caption_raw = response.choices[0].message.content.strip().lower()
-        caption = caption_raw.split()[0] if caption_raw else "unknown"
-
-    except Exception as e:
-        print("Groq Vision Error:", repr(e))
-        return JsonResponse(
-            {"detected": "error", "caption": "ai-error"}
-        )
+    # Use manual selection if provided, otherwise use a placeholder
+    if manual_item and manual_item in EWASTE_ITEMS:
+        caption = manual_item.lower()
+    else:
+        # Default: ask user to select manually
+        caption = "unknown"
 
     # ---- Check if electronic (e-waste) ----
-    ewaste_keywords = [
-        "phone", "mobile", "smartphone",
-        "charger", "adapter", "cable", "wire", "usb",
-        "battery", "powerbank",
-        "earbuds", "airpods",
-        "laptop", "mouse", "keyboard",
-        "speaker", "camera", "webcam",
-        "remote", "gadget", "device",
+    ewaste_keywords = list(EWASTE_ITEMS.keys()) + [
+        "mobile", "smartphone", "wire", "usb", "airpods",
+        "gadget", "device", "electronic", "tech",
     ]
 
     detected = "ewaste" if any(k in caption for k in ewaste_keywords) else "not-ewaste"
