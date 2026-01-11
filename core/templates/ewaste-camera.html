@@ -32,8 +32,26 @@
             border-radius: 10px;
         }
 
-        .detect-btn {
+        /* ITEM SELECT DROPDOWN */
+        #item-select {
+            width: 100%;
+            padding: 12px;
             margin-top: 15px;
+            margin-bottom: 10px;
+            border-radius: 8px;
+            border: 2px solid #ddd;
+            font-size: 16px;
+            background: white;
+            cursor: pointer;
+        }
+
+        #item-select:focus {
+            outline: none;
+            border-color: #222;
+        }
+
+        .detect-btn {
+            margin-top: 10px;
             background: #222;
             padding: 12px 22px;
             border-radius: 8px;
@@ -41,29 +59,34 @@
             font-size: 18px;
             cursor: pointer;
             border: none;
+            width: 100%;
+        }
+
+        .detect-btn:hover {
+            background: #444;
         }
 
         /* RESULT BOX */
         .ewaste-box {
-            background:#28a745;
-            color:#fff;
-            padding:18px;
-            border-radius:10px;
-            width:280px;
-            margin:20px auto;
-            font-size:22px;
-            font-weight:bold;
+            background: #28a745;
+            color: #fff;
+            padding: 18px;
+            border-radius: 10px;
+            width: 280px;
+            margin: 20px auto;
+            font-size: 22px;
+            font-weight: bold;
         }
 
         .not-ewaste-box {
-            background:#dc3545;
-            color:#fff;
-            padding:18px;
-            border-radius:10px;
-            width:280px;
-            margin:20px auto;
-            font-size:22px;
-            font-weight:bold;
+            background: #dc3545;
+            color: #fff;
+            padding: 18px;
+            border-radius: 10px;
+            width: 280px;
+            margin: 20px auto;
+            font-size: 22px;
+            font-weight: bold;
         }
 
         #autoToggle {
@@ -76,6 +99,12 @@
             font-size: 18px;
             margin-left: 8px;
             font-weight: bold;
+        }
+
+        #object-name {
+            font-size: 18px;
+            color: #555;
+            margin-top: 15px;
         }
     </style>
 </head>
@@ -94,15 +123,38 @@
     <!-- CAMERA AREA -->
     <div id="video-box">
         <video id="camera" autoplay></video>
+
+        <!-- ITEM SELECT DROPDOWN -->
+        <select id="item-select">
+            <option value="">-- Select Item Type --</option>
+            <option value="phone">📱 Phone/Mobile</option>
+            <option value="charger">🔌 Charger</option>
+            <option value="laptop">💻 Laptop</option>
+            <option value="tablet">📲 Tablet</option>
+            <option value="headphones">🎧 Headphones</option>
+            <option value="keyboard">⌨️ Keyboard</option>
+            <option value="mouse">🖱️ Mouse</option>
+            <option value="monitor">🖥️ Monitor</option>
+            <option value="cable">🔗 Cable</option>
+            <option value="battery">🔋 Battery</option>
+            <option value="powerbank">⚡ PowerBank</option>
+            <option value="speaker">🔊 Speaker</option>
+            <option value="camera">📷 Camera</option>
+            <option value="earbuds">🎵 Earbuds</option>
+            <option value="adapter">🔌 Adapter</option>
+            <option value="remote">📡 Remote</option>
+            <option value="webcam">📹 Webcam</option>
+        </select>
+
         <button class="detect-btn" id="detectButton">Manual Detect</button>
     </div>
 
     <!-- RESULT -->
     <div id="result-box" class="not-ewaste-box">Waiting...</div>
-    <div id="object-name" style="font-size:18px; color:#555;">Object: —</div>
+    <div id="object-name">Object: —</div>
 
     <!-- Hidden canvas -->
-    <canvas id="hiddenCanvas" style="display:none;"></canvas>
+    anvas id="hiddenCanvas" style="display:none;"></canvas>
 
 <script>
 ////////////////////////////////////////////////////////////////////////////////
@@ -167,7 +219,7 @@ document.getElementById("detectButton").addEventListener("click", () => {
 });
 
 ////////////////////////////////////////////////////////////////////////////////
-// CAPTURE FRAME
+// CAPTURE FRAME + SEND WITH SELECTED ITEM
 ////////////////////////////////////////////////////////////////////////////////
 
 function captureAndSend() {
@@ -179,15 +231,25 @@ function captureAndSend() {
     ctx.drawImage(video, 0, 0);
 
     const imageData = canvas.toDataURL("image/jpeg");
+    const selectedItem = document.getElementById("item-select").value;
+
+    // Build form data
+    let bodyData = "image=" + encodeURIComponent(imageData);
+    if (selectedItem) {
+        bodyData += "&item=" + encodeURIComponent(selectedItem);
+    }
 
     fetch("/api/camera-detect/", {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: "image=" + encodeURIComponent(imageData)
+        body: bodyData
     })
     .then(res => res.json())
     .then(data => updateUI(data.detected, data.caption))
-    .catch(err => updateUI("not-ewaste", "model_error"));
+    .catch(err => {
+        console.error("Error:", err);
+        updateUI("error", "connection_error");
+    });
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -200,19 +262,29 @@ function updateUI(result, caption) {
 
     if (!caption) caption = "unknown";
 
-    // Always play “object detected” sound
-    document.getElementById("sound-detect").play().catch(()=>{});
+    // Always play "object detected" sound
+    try {
+        document.getElementById("sound-detect").play().catch(()=>{});
+    } catch (e) {}
 
     if (result === "ewaste") {
         box.className = "ewaste-box";
-        box.innerHTML = "EWASTE ✔";
+        box.innerHTML = "♻️ EWASTE ✔";
 
-        document.getElementById("sound-ewaste").play().catch(()=>{});
+        try {
+            document.getElementById("sound-ewaste").play().catch(()=>{});
+        } catch (e) {}
+    } else if (result === "error") {
+        box.className = "not-ewaste-box";
+        box.innerHTML = "⚠️ ERROR";
+        name.innerText = "Object: " + caption;
     } else {
         box.className = "not-ewaste-box";
-        box.innerHTML = "NOT EWASTE ✗";
+        box.innerHTML = "❌ NOT EWASTE";
 
-        document.getElementById("sound-not-ewaste").play().catch(()=>{});
+        try {
+            document.getElementById("sound-not-ewaste").play().catch(()=>{});
+        } catch (e) {}
     }
 
     name.innerText = "Object: " + caption;
