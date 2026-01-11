@@ -19,6 +19,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # ------------------------
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
+HF_API_KEY = os.environ.get("HF_API_KEY", "")
 
 # ------------------------
 # Security settings
