@@ -1,6 +1,5 @@
 import base64
 import io
-import requests
 
 from groq import Groq
 from PIL import Image
@@ -11,12 +10,9 @@ from django.shortcuts import render
 from django.conf import settings
 
 # ============================================================
-# CONFIGURE GROQ (TEXT) + HUGGING FACE (VISION)
+# CONFIGURE GROQ (TEXT + VISION)
 # ============================================================
 groq_client = Groq(api_key=settings.GROQ_API_KEY)
-
-HF_API_KEY = settings.HF_API_KEY
-HF_VISION_MODEL = "Salesforce/blip-image-captioning-base"  # Faster, more reliable
 
 # ============================================================
 # STATIC PAGE ROUTES
@@ -64,7 +60,7 @@ def ewaste_camera_page(request):
     return render(request, "ewaste-camera.html")
 
 # ============================================================
-# E-WASTE DETECTION USING HUGGING FACE VISION (BLIP MODEL)
+# E-WASTE DETECTION USING GROQ VISION
 # ============================================================
 @csrf_exempt
 def camera_ai_api(request):
@@ -112,34 +108,41 @@ def camera_ai_api(request):
         )
 
     try:
-        # Use Hugging Face Inference API with BLIP model (faster)
-        api_url = f"https://api-inference.huggingface.co/models/{HF_VISION_MODEL}"
-        headers = {"Authorization": f"Bearer {HF_API_KEY}"}
+        # Use Groq for vision (completely free, no API issues)
+        prompt = (
+            "Identify the single main object in this image. "
+            "Return only one word (e.g., phone, charger, laptop, battery, cable, camera, remote, keyboard, earbuds, mouse, adapter, speaker, webcam, powerbank). "
+            "No punctuation, no explanation."
+        )
         
-        files = {"files": ("image.jpg", image_bytes)}
-        response = requests.post(api_url, headers=headers, files=files, timeout=30)
-        
-        if response.status_code != 200:
-            print(f"HF API Error: {response.status_code} - {response.text[:200]}")
-            return JsonResponse(
-                {"detected": "error", "caption": "ai-error"}
-            )
-        
-        result = response.json()
-        
-        # Parse caption from BLIP model
-        if isinstance(result, list) and len(result) > 0:
-            caption_raw = result[0].get("generated_text", "unknown")
-        elif isinstance(result, dict):
-            caption_raw = result.get("generated_text", "unknown")
-        else:
-            caption_raw = str(result)
-        
-        caption_raw = caption_raw.strip().lower()
+        response = groq_client.chat.completions.create(
+            model="llama-3.2-90b-vision-preview",
+            messages=[
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": prompt,
+                        },
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": f"data:image/jpeg;base64,{base64_data}",
+                            },
+                        },
+                    ],
+                }
+            ],
+            max_tokens=16,
+            temperature=0.2,
+        )
+
+        caption_raw = response.choices[0].message.content.strip().lower()
         caption = caption_raw.split()[0] if caption_raw else "unknown"
 
     except Exception as e:
-        print("HF Vision Error:", repr(e))
+        print("Groq Vision Error:", repr(e))
         return JsonResponse(
             {"detected": "error", "caption": "ai-error"}
         )
@@ -184,7 +187,7 @@ def chatbot_response(request):
                     "content": (
                         "You are an e-waste guide assistant. Answer briefly and helpfully about "
                         "electronic waste recycling, proper disposal, environmental impact, and best practices. "
-                        "Keep responses under 50 words."
+                        "Keep responses under 100 words."
                     ),
                 },
                 {
