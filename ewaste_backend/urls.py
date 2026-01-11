@@ -19,7 +19,6 @@ urlpatterns = [
 
     # HARDWARE PAGE
     path("detection/", views.detection, name="detection"),
-    #path("api/detect/", views.detect_api, name="detect_api"),
 
     # CAMERA AI
     path("ewaste-camera/", views.ewaste_camera_page, name="ewaste_camera_page"),
@@ -35,8 +34,8 @@ urlpatterns = [
     # ADMIN REQUESTS
     path("reqs/", views.reqs, name="reqs"),
 
-    # CHATBOT
-    #path("api/chatbot/", views.chatbot_response, name="chatbot_response"),
+    # CHATBOT (UNCOMMENTED)
+    path("api/chatbot/", views.chatbot_response, name="chatbot_response"),
 
     # ADMIN PANEL
     path("admin/", admin.site.urls),
