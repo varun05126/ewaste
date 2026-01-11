@@ -113,22 +113,17 @@ def camera_ai_api(request):
             status=400,
         )
 
-    # ---- Vision prompt ----
-    prompt = (
-        "Identify the single main object in this image. "
-        "Return only one word (e.g., phone, charger, laptop, battery, cable, camera, remote, keyboard, earbuds, mouse, adapter, speaker, webcam, powerbank). "
-        "No punctuation, no explanation."
-    )
-
     try:
-        # Hugging Face vision call
-        raw_caption = hf_vision_client.image_to_text(
-            image=image_bytes,
-            prompt=prompt,
-            max_new_tokens=16,
-        )
+        # Hugging Face vision call (no custom prompt)
+        result = hf_vision_client.image_to_text(image=image_bytes)
 
-        caption_raw = str(raw_caption).strip().lower()
+        # result is usually a dict with 'generated_text' key
+        if isinstance(result, dict):
+            caption_raw = result.get("generated_text", "unknown")
+        else:
+            caption_raw = str(result)
+
+        caption_raw = caption_raw.strip().lower()
         caption = caption_raw.split()[0] if caption_raw else "unknown"
 
     except Exception as e:
@@ -177,7 +172,7 @@ def chatbot_response(request):
                     "content": (
                         "You are an e-waste guide assistant. Answer briefly and helpfully about "
                         "electronic waste recycling, proper disposal, environmental impact, and best practices. "
-                        "Keep responses under 100 words."
+                        "Keep responses under 50 words."
                     ),
                 },
                 {
