@@ -8,9 +8,6 @@
     {% load static %}
     <link rel="stylesheet" href="{% static 'styles.css' %}">
 
-    <!-- CSRF -->
-    <meta name="csrf-token" content="{{ csrf_token }}">
-
     <!-- SEO -->
     <meta name="description" content="E-Waste Management platform for responsible recycling, pickup services, and AI-based e-waste detection.">
     <meta name="keywords" content="e-waste, recycling, electronics waste, green tech, sustainability, e-waste pickup">
@@ -26,11 +23,21 @@
             line-height: 1.6;
         }
 
-        h1, h2, h3 { color: #2c3e50; }
+        h1, h2, h3 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
 
-        section { padding: 60px 20px; text-align: center; }
+        section {
+            padding: 60px 20px;
+            text-align: center;
+        }
 
-        header { background: #2c3e50; padding: 15px 10px; }
+        /* ===== HEADER ===== */
+        header {
+            background: #2c3e50;
+            padding: 15px 10px;
+        }
 
         nav {
             max-width: 1200px;
@@ -40,7 +47,11 @@
             align-items: center;
         }
 
-        .logo { font-size: 26px; font-weight: bold; color: white; }
+        .logo {
+            font-size: 26px;
+            font-weight: bold;
+            color: white;
+        }
 
         nav ul {
             list-style: none;
@@ -61,9 +72,14 @@
             transition: 0.2s;
         }
 
-        nav ul li a:hover { background: rgba(255,255,255,0.15); }
+        nav ul li a:hover {
+            background: rgba(255,255,255,0.15);
+        }
 
-        #home { background: linear-gradient(to right, #ecf0f1, #f7f9fb); }
+        /* ===== HERO ===== */
+        #home {
+            background: linear-gradient(to right, #ecf0f1, #f7f9fb);
+        }
 
         .btn {
             display: inline-block;
@@ -76,6 +92,7 @@
             font-weight: 500;
         }
 
+        /* ===== GRID ===== */
         .grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
@@ -90,8 +107,13 @@
             box-shadow: 0 4px 10px rgba(0,0,0,0.08);
         }
 
-        .card img { width: 100%; border-radius: 10px; }
+        .card img {
+            width: 100%;
+            border-radius: 10px;
+            margin-bottom: 10px;
+        }
 
+        /* ===== CHATBOT ===== */
         #chatbot-container {
             width: 90%;
             max-width: 430px;
@@ -127,6 +149,7 @@
             border-radius: 15px;
             max-width: 90%;
             font-size: 15px;
+            line-height: 1.5;
         }
 
         .user-message {
@@ -157,12 +180,21 @@
             font-size: 15px;
         }
 
+        /* ===== FOOTER ===== */
         footer {
             background: #2c3e50;
             color: white;
             text-align: center;
             padding: 18px;
             font-size: 14px;
+        }
+
+        /* ===== MOBILE ===== */
+        @media (max-width: 600px) {
+            h1 { font-size: 1.8rem; }
+            h2 { font-size: 1.4rem; }
+            nav ul li a { font-size: 14px; padding: 6px 9px; }
+            section { padding: 40px 12px; }
         }
     </style>
 </head>
@@ -180,7 +212,11 @@
             <li><a href="{% url 'contact' %}">Contact</a></li>
             <li><a href="{% url 'login' %}">Login</a></li>
             <li><a href="{% url 'signup' %}">Signup</a></li>
-            <li><a href="{% url 'ewaste_camera_page' %}" style="background:#28a745;font-weight:bold;">📷 Detect E-Waste</a></li>
+            <li>
+                <a href="{% url 'ewaste_camera_page' %}" style="background:#28a745;font-weight:bold;">
+                    📷 Detect E-Waste
+                </a>
+            </li>
         </ul>
     </nav>
 </header>
@@ -189,6 +225,24 @@
     <h1>Welcome to E-Waste Management</h1>
     <p>Recycle your electronic waste responsibly. Our mission is to create a sustainable future.</p>
     <a href="{% url 'pickup' %}" class="btn">Request Pickup</a>
+</section>
+
+<section id="services">
+    <h2>Our Services</h2>
+    <div class="grid">
+        <div class="card">
+            <h3>E-Waste Pickup</h3>
+            <p>We collect and safely dispose of your old electronics.</p>
+        </div>
+        <div class="card">
+            <h3>Data Destruction</h3>
+            <p>We ensure your data is securely wiped before recycling.</p>
+        </div>
+        <div class="card">
+            <h3>Recycling & Refurbishment</h3>
+            <p>Your e-waste is refurbished or recycled safely.</p>
+        </div>
+    </div>
 </section>
 
 <section>
@@ -205,46 +259,40 @@
 </footer>
 
 <script>
-const csrftoken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+const chatBox = document.getElementById("chatbot-messages");
+const input = document.getElementById("user-input");
+const sendBtn = document.getElementById("send-button");
 
-document.getElementById('send-button').addEventListener('click', sendMessage);
-document.getElementById('user-input').addEventListener('keypress', e => {
-    if (e.key === 'Enter') sendMessage();
+sendBtn.addEventListener("click", sendMessage);
+input.addEventListener("keypress", function(e) {
+    if (e.key === "Enter") sendMessage();
 });
 
 function sendMessage() {
-    const input = document.getElementById('user-input');
-    const msg = input.value.trim();
-    if (!msg) return;
+    const message = input.value.trim();
+    if (!message) return;
 
-    const chat = document.getElementById('chatbot-messages');
-
-    chat.innerHTML += `<div class="message user-message">${msg}</div>`;
+    chatBox.innerHTML += `<div class="message user-message">${message}</div>`;
     input.value = "";
-    chat.scrollTop = chat.scrollHeight;
+    chatBox.scrollTop = chatBox.scrollHeight;
 
-    const typing = document.createElement("div");
-    typing.className = "message chatbot-message";
-    typing.textContent = "Typing...";
-    chat.appendChild(typing);
-
-    fetch('/api/chatbot/', {
+    fetch("/api/chatbot/", {
         method: "POST",
-        headers: {
-            "Content-Type": "application/x-www-form-urlencoded",
-            "X-CSRFToken": csrftoken
-        },
-        body: `message=${encodeURIComponent(msg)}`
+        headers: {"Content-Type": "application/x-www-form-urlencoded"},
+        body: "message=" + encodeURIComponent(message)
     })
-    .then(r => r.json())
+    .then(res => res.json())
     .then(data => {
-        typing.remove();
-        chat.innerHTML += `<div class="message chatbot-message">${data.response}</div>`;
-        chat.scrollTop = chat.scrollHeight;
+        const formatted = data.response
+            .replace(/\*\*(.*?)\*\*/g, "<b>$1</b>")
+            .replace(/\n/g, "<br>")
+            .replace(/(\d\.)/g, "<br><b>$1</b>");
+
+        chatBox.innerHTML += `<div class="message chatbot-message">${formatted}</div>`;
+        chatBox.scrollTop = chatBox.scrollHeight;
     })
     .catch(() => {
-        typing.remove();
-        chat.innerHTML += `<div class="message chatbot-message">Server error.</div>`;
+        chatBox.innerHTML += `<div class="message chatbot-message">Server error. Try again.</div>`;
     });
 }
 </script>
