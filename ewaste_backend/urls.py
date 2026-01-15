@@ -45,6 +45,8 @@ urlpatterns = [
 
     #seo
     path("robots.txt", views.robots_txt),
+
+    path("sitemap.xml", sitemap, {"sitemaps": sitemaps}, name="sitemap"),
 ]
 
 if settings.DEBUG:
