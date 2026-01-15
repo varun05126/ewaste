@@ -3,8 +3,15 @@ from django.urls import path
 from core import views
 from django.conf import settings
 from django.conf.urls.static import static
+
+# Sitemap imports
 from django.contrib.sitemaps.views import sitemap
 from core.sitemaps import StaticViewSitemap
+
+# Sitemap dictionary (THIS WAS MISSING)
+sitemaps = {
+    "static": StaticViewSitemap,
+}
 
 urlpatterns = [
 
@@ -36,20 +43,20 @@ urlpatterns = [
     # ADMIN REQUESTS
     path("reqs/", views.reqs, name="reqs"),
 
-    # CHATBOT (UNCOMMENTED)
+    # CHATBOT
     path("api/chatbot/", views.chatbot_response, name="chatbot_response"),
 
     # ADMIN PANEL
     path("admin/", admin.site.urls),
 
-    #google site verification
+    # GOOGLE SITE VERIFICATION
     path("googleb5949ab1058f2676.html", views.google_verify),
 
-    #seo
+    # SEO
     path("robots.txt", views.robots_txt),
-
     path("sitemap.xml", sitemap, {"sitemaps": sitemaps}, name="sitemap"),
 ]
 
+# STATIC FILES (DEV MODE)
 if settings.DEBUG:
     urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
