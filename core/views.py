@@ -69,10 +69,10 @@ def detection(request):
     return render(request, "detection.html")
 
 def data_destruction(request): 
-    return render(request, "data-destruction.html")
+    return render(request, "dd.html")
 
 def refurbishment(request): 
-    return render(request, "refurbishment.html")
+    return render(request, "re.html")
 
 # ============================================================
 # CAMERA PAGE
