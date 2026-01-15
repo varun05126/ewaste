@@ -6,38 +6,33 @@ import os
 from dotenv import load_dotenv
 from django.contrib.messages import constants as messages
 
-# Load environment variables from .env file (local dev)
+# Load .env for local dev
 load_dotenv()
 
 # ------------------------
-# Base project directory
+# Base directory
 # ------------------------
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # ------------------------
-# API Keys for External Services
+# External API Keys
 # ------------------------
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
 HF_API_KEY = os.environ.get("HF_API_KEY", "")
 
 # ------------------------
-# Security settings
+# Core security
 # ------------------------
 SECRET_KEY = os.environ.get(
     "DJANGO_SECRET_KEY",
-    "dev-secret-key-please-change-in-production-!!!!!!",
+    "dev-secret-key-change-this-in-production",
 )
 
-DEBUG = os.environ.get("DJANGO_DEBUG", "True") == "True"
+DEBUG = os.environ.get("DJANGO_DEBUG", "False") == "True"
 
-# Allow configuring hosts via env; fall back to local + Render domain
 default_hosts = "127.0.0.1,localhost,ewaste-backend-ewia.onrender.com"
 ALLOWED_HOSTS = os.environ.get("DJANGO_ALLOWED_HOSTS", default_hosts).split(",")
-
-# In dev, you can optionally open it up completely:
-if DEBUG and os.environ.get("DJANGO_ALLOW_ALL_HOSTS", "False") == "True":
-    ALLOWED_HOSTS = ["*"]
 
 # ------------------------
 # Installed apps
@@ -68,7 +63,7 @@ MIDDLEWARE = [
 ]
 
 # ------------------------
-# URL and WSGI
+# URLs & WSGI
 # ------------------------
 ROOT_URLCONF = "ewaste_backend.urls"
 WSGI_APPLICATION = "ewaste_backend.wsgi.application"
@@ -102,7 +97,7 @@ DATABASES = {
 }
 
 # ------------------------
-# Password Validators
+# Password validation
 # ------------------------
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
@@ -112,29 +107,29 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 # ------------------------
-# Time and Language
+# Language & time
 # ------------------------
 LANGUAGE_CODE = "en-us"
-TIME_ZONE = "UTC"  # or "Asia/Kolkata"
+TIME_ZONE = "Asia/Kolkata"
 USE_I18N = True
 USE_TZ = True
 
 # ------------------------
 # Static files
 # ------------------------
-STATIC_URL = "static/"
+STATIC_URL = "/static/"
 STATICFILES_DIRS = [
     BASE_DIR / "core/static",
 ]
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
 # ------------------------
-# Default primary key field type
+# Default PK
 # ------------------------
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # ------------------------
-# Email Configuration
+# Email
 # ------------------------
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 EMAIL_HOST = os.environ.get("EMAIL_HOST", "smtp.gmail.com")
@@ -145,7 +140,7 @@ EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD", "")
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 
 # ------------------------
-# DRF settings
+# Django REST
 # ------------------------
 REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": [
@@ -158,7 +153,7 @@ REST_FRAMEWORK = {
 }
 
 # ------------------------
-# Messaging settings
+# Messages UI
 # ------------------------
 MESSAGE_TAGS = {
     messages.DEBUG: "alert-info",
@@ -169,3 +164,19 @@ MESSAGE_TAGS = {
 }
 
 ADMIN_EMAIL = "malthumkarvarun@gmail.com"
+
+# ------------------------
+# Production security
+# ------------------------
+if not DEBUG:
+    SECURE_SSL_REDIRECT = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+
+    SECURE_BROWSER_XSS_FILTER = True
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    X_FRAME_OPTIONS = "DENY"
+
+    SECURE_HSTS_SECONDS = 31536000
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True

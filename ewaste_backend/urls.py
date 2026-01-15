@@ -56,10 +56,6 @@ urlpatterns = [
     # SEO
     path("robots.txt", views.robots_txt),
     path("sitemap.xml", sitemap, {"sitemaps": sitemaps}, name="sitemap"),
-
-    # ===== SERVICES =====
-    path("data-destruction/", views.data_destruction, name="data_destruction"),
-    path("refurbishment/", views.refurbishment, name="refurbishment"),
 ]
 
 # STATIC FILES (DEV MODE)
