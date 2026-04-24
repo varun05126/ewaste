@@ -6,119 +6,205 @@
   <title>E-Waste AI Detector</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    :root {
-      --green: #22c55e; --red: #ef4444; --orange: #f97316;
-      --blue: #3b82f6; --yellow: #eab308; --gray: #6b7280;
-      --bg: #0f172a; --card: #1e293b; --border: #334155;
-      --text: #f1f5f9; --muted: #94a3b8;
-    }
+
     body {
       font-family: 'Segoe UI', Arial, sans-serif;
-      background: var(--bg); color: var(--text);
-      min-height: 100vh; display: flex; flex-direction: column;
-      align-items: center; padding: 24px 16px 40px;
+      background: #f4f6f9;
+      color: #1a1a2e;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 32px 16px 48px;
     }
-    .header { text-align: center; margin-bottom: 28px; }
+
+    /* ── Header ── */
+    .header {
+      text-align: center;
+      margin-bottom: 32px;
+    }
     .header h1 {
-      font-size: 28px; font-weight: 800;
-      background: linear-gradient(135deg, #22c55e, #3b82f6);
-      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+      font-size: 30px;
+      font-weight: 800;
+      color: #1a1a2e;
+      letter-spacing: -0.5px;
     }
-    .header p { color: var(--muted); font-size: 14px; margin-top: 6px; }
+    .header h1 span { color: #16a34a; }
+    .header p {
+      color: #64748b;
+      font-size: 14px;
+      margin-top: 6px;
+    }
+
+    /* ── Card ── */
     .card {
-      background: var(--card); border: 1px solid var(--border);
-      border-radius: 20px; padding: 20px; width: 100%; max-width: 460px;
-      box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 24px;
+      padding: 24px;
+      width: 100%;
+      max-width: 480px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.07);
     }
+
+    /* ── Camera viewport ── */
     .camera-wrap {
-      position: relative; background: #000;
-      border-radius: 14px; overflow: hidden; aspect-ratio: 4/3; width: 100%;
+      position: relative;
+      background: #f1f5f9;
+      border-radius: 16px;
+      overflow: hidden;
+      aspect-ratio: 4/3;
+      width: 100%;
+      border: 2px solid #e2e8f0;
     }
-    #video { width: 100%; height: 100%; object-fit: cover; display: block; }
-    #snapshot { width: 100%; height: 100%; object-fit: cover; display: none; border-radius: 14px; }
+    #video {
+      width: 100%; height: 100%;
+      object-fit: cover; display: block;
+    }
+    #snapshot {
+      width: 100%; height: 100%;
+      object-fit: cover; display: none;
+    }
     .camera-off-msg {
-      position: absolute; inset: 0; display: flex; flex-direction: column;
-      align-items: center; justify-content: center; color: var(--muted);
-      font-size: 14px; gap: 10px;
+      position: absolute; inset: 0;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      color: #94a3b8; font-size: 14px; gap: 10px;
     }
-    .camera-off-msg .icon { font-size: 48px; }
+    .camera-off-msg .icon { font-size: 52px; }
+
+    /* scan overlay */
     .scan-line {
-      position: absolute; left: 0; right: 0; height: 2px; top: 0;
-      background: linear-gradient(90deg, transparent, #22c55e, transparent);
+      position: absolute; left: 0; right: 0; height: 3px; top: 0;
+      background: linear-gradient(90deg, transparent, #16a34a, transparent);
       animation: scan 1.8s linear infinite; display: none;
     }
     @keyframes scan { 0%{top:0;opacity:1} 90%{top:100%;opacity:1} 100%{top:100%;opacity:0} }
     .scan-active .scan-line { display: block; }
-    .scan-active #video { border: 2px solid #22c55e; }
-    .corner { position: absolute; width: 20px; height: 20px; border-color: #22c55e; border-style: solid; display: none; }
-    .corner.tl { top:10px;left:10px;border-width:3px 0 0 3px; }
-    .corner.tr { top:10px;right:10px;border-width:3px 3px 0 0; }
-    .corner.bl { bottom:10px;left:10px;border-width:0 0 3px 3px; }
-    .corner.br { bottom:10px;right:10px;border-width:0 3px 3px 0; }
+    .scan-active { border-color: #16a34a !important; }
+
+    .corner { position: absolute; width: 22px; height: 22px; border-color: #16a34a; border-style: solid; display: none; }
+    .corner.tl { top:10px; left:10px;  border-width: 3px 0 0 3px; }
+    .corner.tr { top:10px; right:10px; border-width: 3px 3px 0 0; }
+    .corner.bl { bottom:10px; left:10px;  border-width: 0 0 3px 3px; }
+    .corner.br { bottom:10px; right:10px; border-width: 0 3px 3px 0; }
     .scan-active .corner { display: block; }
-    .btn-row { display: flex; gap: 10px; margin-top: 16px; }
+
+    /* ── Buttons ── */
+    .btn-row { display: flex; gap: 10px; margin-top: 18px; }
     .btn {
-      flex: 1; padding: 12px; border: none; border-radius: 12px;
+      flex: 1; padding: 13px; border: none; border-radius: 12px;
       font-size: 15px; font-weight: 700; cursor: pointer;
-      transition: opacity 0.15s, transform 0.1s;
-      display: flex; align-items: center; justify-content: center; gap: 6px;
+      transition: transform 0.1s, box-shadow 0.15s;
+      display: flex; align-items: center; justify-content: center; gap: 7px;
     }
     .btn:active { transform: scale(0.97); }
     .btn:disabled { opacity: 0.45; cursor: not-allowed; }
-    .btn-start  { background: var(--blue);   color: #fff; }
-    .btn-detect { background: var(--green);  color: #fff; }
-    .btn-stop   { background: var(--red);    color: #fff; }
-    .btn-retake { background: #7c3aed;       color: #fff; }
-    .status-wrap { margin-top: 18px; min-height: 80px; display: flex; align-items: center; justify-content: center; }
+    .btn-start  { background: #1a1a2e; color: #fff; }
+    .btn-start:hover  { box-shadow: 0 4px 12px rgba(26,26,46,0.25); }
+    .btn-detect { background: #16a34a; color: #fff; }
+    .btn-detect:hover { box-shadow: 0 4px 12px rgba(22,163,74,0.3); }
+    .btn-stop   { background: #fff; color: #ef4444; border: 1.5px solid #fca5a5; }
+    .btn-retake { background: #f1f5f9; color: #1a1a2e; border: 1.5px solid #e2e8f0; }
+
+    /* ── Status badge ── */
+    .status-wrap { margin-top: 20px; min-height: 72px; display: flex; align-items: center; justify-content: center; }
     .status-badge {
       border-radius: 14px; padding: 14px 20px; width: 100%; text-align: center;
-      font-size: 20px; font-weight: 800; letter-spacing: 0.5px;
+      font-size: 18px; font-weight: 800;
       display: flex; align-items: center; justify-content: center; gap: 10px;
       transition: all 0.3s ease;
     }
-    .badge-waiting   { background: rgba(234,179,8,0.15);  border: 1.5px solid var(--yellow); color: var(--yellow); }
-    .badge-scanning  { background: rgba(59,130,246,0.15); border: 1.5px solid var(--blue);   color: var(--blue); }
-    .badge-ewaste    { background: rgba(34,197,94,0.15);  border: 1.5px solid var(--green);  color: var(--green); }
-    .badge-notewaste { background: rgba(239,68,68,0.15);  border: 1.5px solid var(--red);    color: var(--red); }
-    .badge-error     { background: rgba(107,114,128,0.15);border: 1.5px solid var(--gray);   color: var(--gray); }
+    .badge-waiting   { background: #fefce8; border: 1.5px solid #fde047; color: #854d0e; }
+    .badge-scanning  { background: #eff6ff; border: 1.5px solid #93c5fd; color: #1d4ed8; }
+    .badge-ewaste    { background: #f0fdf4; border: 1.5px solid #86efac; color: #15803d; }
+    .badge-notewaste { background: #fef2f2; border: 1.5px solid #fca5a5; color: #dc2626; }
+    .badge-error     { background: #f8fafc; border: 1.5px solid #cbd5e1; color: #64748b; }
+
+    /* ── Result card ── */
     .result-card {
-      margin-top: 16px; background: #0f172a;
-      border: 1px solid var(--border); border-radius: 14px; padding: 16px; display: none;
+      margin-top: 18px;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 16px;
+      padding: 18px;
+      display: none;
     }
     .result-card.visible { display: block; }
-    .result-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
-    .result-title { font-size: 18px; font-weight: 800; }
-    .tag { font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 20px; text-transform: uppercase; letter-spacing: 0.5px; }
-    .tag-ewaste    { background: rgba(34,197,94,0.2);  color: var(--green); }
-    .tag-recycl    { background: rgba(59,130,246,0.2); color: var(--blue); }
-    .tag-hazardous { background: rgba(239,68,68,0.2);  color: var(--red); }
-    .tag-other     { background: rgba(107,114,128,0.2);color: var(--gray); }
-    .stats-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 12px; }
-    .stat-box { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 10px 8px; text-align: center; }
-    .stat-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
-    .stat-value { font-size: 15px; font-weight: 700; }
-    .tip-box { background: rgba(34,197,94,0.08); border: 1px solid rgba(34,197,94,0.25); border-radius: 10px; padding: 10px 12px; font-size: 13px; color: #86efac; line-height: 1.5; }
-    .conf-bar-wrap { margin-top: 12px; }
-    .conf-bar-label { font-size: 12px; color: var(--muted); margin-bottom: 4px; display: flex; justify-content: space-between; }
-    .conf-bar-track { background: var(--border); border-radius: 99px; height: 8px; overflow: hidden; }
-    .conf-bar-fill { height: 100%; border-radius: 99px; background: linear-gradient(90deg, #22c55e, #3b82f6); transition: width 0.6s ease; width: 0%; }
+
+    .result-header {
+      display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;
+    }
+    .result-title { font-size: 20px; font-weight: 800; color: #1a1a2e; }
+
+    .tag {
+      font-size: 11px; font-weight: 700; padding: 4px 11px;
+      border-radius: 20px; text-transform: uppercase; letter-spacing: 0.5px;
+    }
+    .tag-ewaste    { background: #dcfce7; color: #15803d; }
+    .tag-recycl    { background: #dbeafe; color: #1d4ed8; }
+    .tag-hazardous { background: #fee2e2; color: #dc2626; }
+    .tag-other     { background: #f1f5f9; color: #475569; }
+
+    .stats-grid {
+      display: grid; grid-template-columns: 1fr 1fr 1fr;
+      gap: 10px; margin-bottom: 14px;
+    }
+    .stat-box {
+      background: #fff; border: 1px solid #e2e8f0;
+      border-radius: 12px; padding: 12px 8px; text-align: center;
+    }
+    .stat-label { font-size: 10px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 5px; }
+    .stat-value { font-size: 15px; font-weight: 700; color: #1a1a2e; }
+    .stat-reward { border-color: #fde047 !important; background: #fefce8 !important; }
+    .stat-reward .stat-label { color: #a16207; }
+    .stat-reward .stat-value { color: #92400e; }
+
+    .conf-bar-wrap { margin-bottom: 14px; }
+    .conf-bar-label { font-size: 12px; color: #64748b; margin-bottom: 5px; display: flex; justify-content: space-between; }
+    .conf-bar-track { background: #e2e8f0; border-radius: 99px; height: 8px; overflow: hidden; }
+    .conf-bar-fill  { height: 100%; border-radius: 99px; background: linear-gradient(90deg, #16a34a, #2563eb); transition: width 0.6s ease; width: 0%; }
+
+    .tip-box {
+      background: #f0fdf4; border: 1px solid #bbf7d0;
+      border-radius: 12px; padding: 12px 14px;
+      font-size: 13px; color: #166534; line-height: 1.55;
+    }
+
+    /* ── Divider ── */
+    .divider { height: 1px; background: #e2e8f0; margin: 20px 0; }
+
     canvas { display: none; }
-    .spinner { width: 22px; height: 22px; border: 3px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite; display: inline-block; }
+
+    .spinner {
+      width: 20px; height: 20px;
+      border: 3px solid rgba(255,255,255,0.4);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      display: inline-block;
+    }
     @keyframes spin { to { transform: rotate(360deg); } }
-    @media (max-width: 480px) { .header h1 { font-size: 22px; } .stats-grid { grid-template-columns: 1fr 1fr; } }
+
+    @media (max-width: 440px) {
+      .header h1 { font-size: 24px; }
+      .stats-grid { grid-template-columns: 1fr 1fr; }
+    }
   </style>
 </head>
 <body>
 
   <div class="header">
-    <h1>♻️ E-Waste AI Detector</h1>
-    <p>Point camera at any electronic item — AI identifies it instantly</p>
+    <h1>♻️ E-Waste <span>AI Detector</span></h1>
+    <p>Point your camera at any electronic item — AI identifies it instantly</p>
   </div>
 
   <div class="card">
+
+    <!-- Camera -->
     <div class="camera-wrap" id="cameraWrap">
       <video id="video" autoplay playsinline></video>
-      <img id="snapshot" alt="Captured frame" />
+      <img id="snapshot" alt="Captured" />
       <div class="camera-off-msg" id="offMsg">
         <span class="icon">📷</span>
         <span>Camera is off</span>
@@ -128,15 +214,21 @@
       <div class="corner bl"></div><div class="corner br"></div>
     </div>
 
+    <!-- Buttons -->
     <div class="btn-row" id="btnRow">
       <button class="btn btn-start" onclick="startCamera()">📷 Start Camera</button>
     </div>
 
+    <!-- Status -->
     <div class="status-wrap">
-      <div class="status-badge badge-waiting" id="statusBadge">⏳ Waiting for camera…</div>
+      <div class="status-badge badge-waiting" id="statusBadge">
+        ⏳ Waiting for camera…
+      </div>
     </div>
 
+    <!-- Result -->
     <div class="result-card" id="resultCard">
+      <div class="divider" style="margin-top:0;"></div>
       <div class="result-header">
         <div class="result-title" id="resultTitle">—</div>
         <div class="tag" id="resultTag">—</div>
@@ -150,19 +242,24 @@
           <div class="stat-label">Confidence</div>
           <div class="stat-value" id="statConf">—</div>
         </div>
-        <div class="stat-box" style="border-color:rgba(234,179,8,0.4);background:rgba(234,179,8,0.08);">
-          <div class="stat-label" style="color:#fbbf24;">Reward</div>
-          <div class="stat-value" style="color:#fbbf24;" id="statReward">—</div>
+        <div class="stat-box stat-reward">
+          <div class="stat-label">Reward</div>
+          <div class="stat-value" id="statReward">—</div>
         </div>
       </div>
       <div class="conf-bar-wrap">
-        <div class="conf-bar-label"><span>AI Confidence</span><span id="confPct">0%</span></div>
-        <div class="conf-bar-track"><div class="conf-bar-fill" id="confBar"></div></div>
+        <div class="conf-bar-label">
+          <span>AI Confidence</span><span id="confPct">0%</span>
+        </div>
+        <div class="conf-bar-track">
+          <div class="conf-bar-fill" id="confBar"></div>
+        </div>
       </div>
-      <div class="tip-box" style="margin-top:12px;">
-        <span>💡 </span><span id="resultTip">—</span>
+      <div class="tip-box">
+        💡 <span id="resultTip">—</span>
       </div>
     </div>
+
   </div>
 
   <canvas id="canvas"></canvas>
@@ -181,15 +278,22 @@
   function setButtons(state) {
     const map = {
       idle:      `<button class="btn btn-start" onclick="startCamera()">📷 Start Camera</button>`,
-      live:      `<button class="btn btn-detect" onclick="captureAndDetect()">🔍 Detect Waste</button><button class="btn btn-stop" onclick="stopCamera()">⏹ Stop</button>`,
-      detecting: `<button class="btn btn-detect" disabled><span class="spinner"></span> Analyzing…</button>`,
+      live:      `<button class="btn btn-detect" onclick="captureAndDetect()">🔍 Detect Waste</button>
+                  <button class="btn btn-stop" onclick="stopCamera()">⏹ Stop</button>`,
+      detecting: `<button class="btn btn-detect" disabled><span class="spinner"></span>&nbsp;Analyzing…</button>`,
       done:      `<button class="btn btn-retake" onclick="startCamera()">🔄 Retake</button>`,
     };
     btnRow.innerHTML = map[state] || map.idle;
   }
 
   function setStatus(type, html) {
-    const cls = {waiting:"badge-waiting",scanning:"badge-scanning",ewaste:"badge-ewaste",notewaste:"badge-notewaste",error:"badge-error"};
+    const cls = {
+      waiting:   "badge-waiting",
+      scanning:  "badge-scanning",
+      ewaste:    "badge-ewaste",
+      notewaste: "badge-notewaste",
+      error:     "badge-error",
+    };
     statusBadge.className = "status-badge " + (cls[type] || "badge-waiting");
     statusBadge.innerHTML = html;
   }
@@ -219,7 +323,8 @@
     stream = null; video.srcObject = null;
     video.style.display = "none"; offMsg.style.display = "flex";
     cameraWrap.classList.remove("scan-active");
-    setButtons("idle"); setStatus("waiting", "⏳ Waiting for camera…");
+    setButtons("idle");
+    setStatus("waiting", "⏳ Waiting for camera…");
   }
 
   async function captureAndDetect() {
@@ -237,7 +342,7 @@
 
     cameraWrap.classList.add("scan-active");
     setButtons("detecting");
-    setStatus("scanning", '<span class="spinner"></span> AI is analyzing…');
+    setStatus("scanning", '<span class="spinner" style="border-top-color:#1d4ed8;border-color:rgba(29,78,216,0.2);"></span>&nbsp;AI is analyzing…');
     resultCard.classList.remove("visible");
 
     try {
@@ -259,14 +364,15 @@
   function renderResult(data) {
     setButtons("done");
     if (!data.success) {
-      const msg = data.error || "Detection failed — try again";
-      setStatus("error", "⚠️ " + msg);
+      setStatus("error", "⚠️ " + (data.error || "Detection failed — try again"));
       return;
     }
     const r = data.result;
 
-    setStatus(data.detected === "ewaste" ? "ewaste" : "notewaste",
-              data.detected === "ewaste" ? "♻️ E-WASTE DETECTED ✔" : "❌ NOT E-WASTE");
+    setStatus(
+      data.detected === "ewaste" ? "ewaste" : "notewaste",
+      data.detected === "ewaste" ? "♻️ E-Waste Detected!" : "❌ Not E-Waste"
+    );
 
     document.getElementById("resultTitle").textContent = r.waste_type || "Unknown";
 
@@ -278,7 +384,8 @@
       "Non-E-Waste":["tag-other",     "🚫 Non-E-Waste"],
     };
     const [cls, lbl] = tagMap[r.category] || ["tag-other", r.category || "—"];
-    tagEl.className = "tag " + cls; tagEl.textContent = lbl;
+    tagEl.className = "tag " + cls;
+    tagEl.textContent = lbl;
 
     document.getElementById("statHazard").textContent = r.hazardous ? "⚠️ Yes" : "✅ No";
     document.getElementById("statConf").textContent   = (r.confidence || 0) + "%";
@@ -287,7 +394,8 @@
     const pct = Math.min(Math.max(r.confidence || 0, 0), 100);
     document.getElementById("confBar").style.width = pct + "%";
     document.getElementById("confPct").textContent  = pct + "%";
-    document.getElementById("resultTip").textContent = r.disposal_tip || "Drop at an authorised e-waste collection centre.";
+    document.getElementById("resultTip").textContent =
+      r.disposal_tip || "Drop at an authorised e-waste collection centre.";
 
     resultCard.classList.add("visible");
   }
