@@ -108,7 +108,7 @@ def camera_ai_api(request):
     # ---- Send to Gemini Vision ----
     raw = ""
     try:
-        model = genai.GenerativeModel("gemini-1.5-flash")
+        model = genai.GenerativeModel("gemini-2.0-flash")
 
         prompt = (
             "You are an expert e-waste classifier. Analyze this image.\n\n"
