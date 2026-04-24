@@ -1,356 +1,292 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>E-Waste AI Detection</title>
-
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background: #f5f5f5;
-            text-align: center;
-            padding: 20px;
-        }
-
-        h1 {
-            font-size: 32px;
-            margin-bottom: 5px;
-        }
-
-        #video-box {
-            background: white;
-            width: 420px;
-            margin: auto;
-            padding: 15px;
-            border-radius: 12px;
-            box-shadow: 0px 3px 10px rgba(0,0,0,0.15);
-        }
-
-        video {
-            width: 100%;
-            border-radius: 10px;
-        }
-
-        /* ITEM SELECT DROPDOWN */
-        #item-select {
-            width: 100%;
-            padding: 12px;
-            margin-top: 15px;
-            margin-bottom: 10px;
-            border-radius: 8px;
-            border: 2px solid #ddd;
-            font-size: 16px;
-            background: white;
-            cursor: pointer;
-            font-weight: bold;
-        }
-
-        #item-select:focus {
-            outline: none;
-            border-color: #222;
-        }
-
-        .detect-btn {
-            margin-top: 10px;
-            background: #222;
-            padding: 12px 22px;
-            border-radius: 8px;
-            color: white;
-            font-size: 18px;
-            cursor: pointer;
-            border: none;
-            width: 100%;
-            font-weight: bold;
-        }
-
-        .detect-btn:hover {
-            background: #444;
-        }
-
-        .detect-btn:disabled {
-            background: #999;
-            cursor: not-allowed;
-        }
-
-        /* RESULT BOX */
-        .ewaste-box {
-            background: #28a745;
-            color: #fff;
-            padding: 18px;
-            border-radius: 10px;
-            width: 280px;
-            margin: 20px auto;
-            font-size: 22px;
-            font-weight: bold;
-        }
-
-        .not-ewaste-box {
-            background: #dc3545;
-            color: #fff;
-            padding: 18px;
-            border-radius: 10px;
-            width: 280px;
-            margin: 20px auto;
-            font-size: 22px;
-            font-weight: bold;
-        }
-
-        .waiting-box {
-            background: #ffc107;
-            color: #333;
-            padding: 18px;
-            border-radius: 10px;
-            width: 280px;
-            margin: 20px auto;
-            font-size: 22px;
-            font-weight: bold;
-        }
-
-        #autoToggle {
-            width: 18px;
-            height: 18px;
-            cursor: pointer;
-        }
-
-        #auto-label {
-            font-size: 18px;
-            margin-left: 8px;
-            font-weight: bold;
-        }
-
-        #object-name {
-            font-size: 18px;
-            color: #555;
-            margin-top: 15px;
-            font-weight: bold;
-        }
-
-        .info-text {
-            color: #666;
-            font-size: 14px;
-            margin-top: 10px;
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>E-Waste AI Detector</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --green: #22c55e; --red: #ef4444; --orange: #f97316;
+      --blue: #3b82f6; --yellow: #eab308; --gray: #6b7280;
+      --bg: #0f172a; --card: #1e293b; --border: #334155;
+      --text: #f1f5f9; --muted: #94a3b8;
+    }
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: var(--bg); color: var(--text);
+      min-height: 100vh; display: flex; flex-direction: column;
+      align-items: center; padding: 24px 16px 40px;
+    }
+    .header { text-align: center; margin-bottom: 28px; }
+    .header h1 {
+      font-size: 28px; font-weight: 800;
+      background: linear-gradient(135deg, #22c55e, #3b82f6);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    }
+    .header p { color: var(--muted); font-size: 14px; margin-top: 6px; }
+    .card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 20px; padding: 20px; width: 100%; max-width: 460px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+    }
+    .camera-wrap {
+      position: relative; background: #000;
+      border-radius: 14px; overflow: hidden; aspect-ratio: 4/3; width: 100%;
+    }
+    #video { width: 100%; height: 100%; object-fit: cover; display: block; }
+    #snapshot { width: 100%; height: 100%; object-fit: cover; display: none; border-radius: 14px; }
+    .camera-off-msg {
+      position: absolute; inset: 0; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; color: var(--muted);
+      font-size: 14px; gap: 10px;
+    }
+    .camera-off-msg .icon { font-size: 48px; }
+    .scan-line {
+      position: absolute; left: 0; right: 0; height: 2px; top: 0;
+      background: linear-gradient(90deg, transparent, #22c55e, transparent);
+      animation: scan 1.8s linear infinite; display: none;
+    }
+    @keyframes scan { 0%{top:0;opacity:1} 90%{top:100%;opacity:1} 100%{top:100%;opacity:0} }
+    .scan-active .scan-line { display: block; }
+    .scan-active #video { border: 2px solid #22c55e; }
+    .corner { position: absolute; width: 20px; height: 20px; border-color: #22c55e; border-style: solid; display: none; }
+    .corner.tl { top:10px;left:10px;border-width:3px 0 0 3px; }
+    .corner.tr { top:10px;right:10px;border-width:3px 3px 0 0; }
+    .corner.bl { bottom:10px;left:10px;border-width:0 0 3px 3px; }
+    .corner.br { bottom:10px;right:10px;border-width:0 3px 3px 0; }
+    .scan-active .corner { display: block; }
+    .btn-row { display: flex; gap: 10px; margin-top: 16px; }
+    .btn {
+      flex: 1; padding: 12px; border: none; border-radius: 12px;
+      font-size: 15px; font-weight: 700; cursor: pointer;
+      transition: opacity 0.15s, transform 0.1s;
+      display: flex; align-items: center; justify-content: center; gap: 6px;
+    }
+    .btn:active { transform: scale(0.97); }
+    .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+    .btn-start  { background: var(--blue);   color: #fff; }
+    .btn-detect { background: var(--green);  color: #fff; }
+    .btn-stop   { background: var(--red);    color: #fff; }
+    .btn-retake { background: #7c3aed;       color: #fff; }
+    .status-wrap { margin-top: 18px; min-height: 80px; display: flex; align-items: center; justify-content: center; }
+    .status-badge {
+      border-radius: 14px; padding: 14px 20px; width: 100%; text-align: center;
+      font-size: 20px; font-weight: 800; letter-spacing: 0.5px;
+      display: flex; align-items: center; justify-content: center; gap: 10px;
+      transition: all 0.3s ease;
+    }
+    .badge-waiting   { background: rgba(234,179,8,0.15);  border: 1.5px solid var(--yellow); color: var(--yellow); }
+    .badge-scanning  { background: rgba(59,130,246,0.15); border: 1.5px solid var(--blue);   color: var(--blue); }
+    .badge-ewaste    { background: rgba(34,197,94,0.15);  border: 1.5px solid var(--green);  color: var(--green); }
+    .badge-notewaste { background: rgba(239,68,68,0.15);  border: 1.5px solid var(--red);    color: var(--red); }
+    .badge-error     { background: rgba(107,114,128,0.15);border: 1.5px solid var(--gray);   color: var(--gray); }
+    .result-card {
+      margin-top: 16px; background: #0f172a;
+      border: 1px solid var(--border); border-radius: 14px; padding: 16px; display: none;
+    }
+    .result-card.visible { display: block; }
+    .result-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+    .result-title { font-size: 18px; font-weight: 800; }
+    .tag { font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 20px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .tag-ewaste    { background: rgba(34,197,94,0.2);  color: var(--green); }
+    .tag-recycl    { background: rgba(59,130,246,0.2); color: var(--blue); }
+    .tag-hazardous { background: rgba(239,68,68,0.2);  color: var(--red); }
+    .tag-other     { background: rgba(107,114,128,0.2);color: var(--gray); }
+    .stats-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+    .stat-box { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 10px 8px; text-align: center; }
+    .stat-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+    .stat-value { font-size: 15px; font-weight: 700; }
+    .tip-box { background: rgba(34,197,94,0.08); border: 1px solid rgba(34,197,94,0.25); border-radius: 10px; padding: 10px 12px; font-size: 13px; color: #86efac; line-height: 1.5; }
+    .conf-bar-wrap { margin-top: 12px; }
+    .conf-bar-label { font-size: 12px; color: var(--muted); margin-bottom: 4px; display: flex; justify-content: space-between; }
+    .conf-bar-track { background: var(--border); border-radius: 99px; height: 8px; overflow: hidden; }
+    .conf-bar-fill { height: 100%; border-radius: 99px; background: linear-gradient(90deg, #22c55e, #3b82f6); transition: width 0.6s ease; width: 0%; }
+    canvas { display: none; }
+    .spinner { width: 22px; height: 22px; border: 3px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite; display: inline-block; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @media (max-width: 480px) { .header h1 { font-size: 22px; } .stats-grid { grid-template-columns: 1fr 1fr; } }
+  </style>
 </head>
-
 <body>
 
-    <h1>E-Waste AI Detection</h1>
-    <p id="subtext">Select an item and click detect</p>
+  <div class="header">
+    <h1>♻️ E-Waste AI Detector</h1>
+    <p>Point camera at any electronic item — AI identifies it instantly</p>
+  </div>
 
-    <!-- AUTO-DETECT TOGGLE -->
-    <div style="margin-bottom: 20px;">
-        <input type="checkbox" id="autoToggle">
-        <label id="auto-label">Auto Detect (requires item selected)</label>
+  <div class="card">
+    <div class="camera-wrap" id="cameraWrap">
+      <video id="video" autoplay playsinline></video>
+      <img id="snapshot" alt="Captured frame" />
+      <div class="camera-off-msg" id="offMsg">
+        <span class="icon">📷</span>
+        <span>Camera is off</span>
+      </div>
+      <div class="scan-line"></div>
+      <div class="corner tl"></div><div class="corner tr"></div>
+      <div class="corner bl"></div><div class="corner br"></div>
     </div>
 
-    <!-- CAMERA AREA -->
-    <div id="video-box">
-        <video id="camera" autoplay></video>
-
-        <!-- ITEM SELECT DROPDOWN -->
-        <select id="item-select">
-            <option value="">-- Select Item Type --</option>
-            <option value="phone">📱 Phone/Mobile</option>
-            <option value="charger">🔌 Charger</option>
-            <option value="laptop">💻 Laptop</option>
-            <option value="tablet">📲 Tablet</option>
-            <option value="headphones">🎧 Headphones</option>
-            <option value="keyboard">⌨️ Keyboard</option>
-            <option value="mouse">🖱️ Mouse</option>
-            <option value="monitor">🖥️ Monitor</option>
-            <option value="cable">🔗 Cable</option>
-            <option value="battery">🔋 Battery</option>
-            <option value="powerbank">⚡ PowerBank</option>
-            <option value="speaker">🔊 Speaker</option>
-            <option value="camera">📷 Camera</option>
-            <option value="earbuds">🎵 Earbuds</option>
-            <option value="adapter">🔌 Adapter</option>
-            <option value="remote">📡 Remote</option>
-            <option value="webcam">📹 Webcam</option>
-        </select>
-
-        <button class="detect-btn" id="detectButton">Manual Detect</button>
-        <p class="info-text">Select an item above, then click detect</p>
+    <div class="btn-row" id="btnRow">
+      <button class="btn btn-start" onclick="startCamera()">📷 Start Camera</button>
     </div>
 
-    <!-- RESULT -->
-    <div id="result-box" class="waiting-box">Waiting...</div>
-    <div id="object-name">Object: —</div>
+    <div class="status-wrap">
+      <div class="status-badge badge-waiting" id="statusBadge">⏳ Waiting for camera…</div>
+    </div>
 
-    <!-- Hidden canvas -->
-    anvas id="hiddenCanvas" style="display:none;"></canvas>
+    <div class="result-card" id="resultCard">
+      <div class="result-header">
+        <div class="result-title" id="resultTitle">—</div>
+        <div class="tag" id="resultTag">—</div>
+      </div>
+      <div class="stats-grid">
+        <div class="stat-box">
+          <div class="stat-label">Hazardous</div>
+          <div class="stat-value" id="statHazard">—</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">Confidence</div>
+          <div class="stat-value" id="statConf">—</div>
+        </div>
+        <div class="stat-box" style="border-color:rgba(234,179,8,0.4);background:rgba(234,179,8,0.08);">
+          <div class="stat-label" style="color:#fbbf24;">Reward</div>
+          <div class="stat-value" style="color:#fbbf24;" id="statReward">—</div>
+        </div>
+      </div>
+      <div class="conf-bar-wrap">
+        <div class="conf-bar-label"><span>AI Confidence</span><span id="confPct">0%</span></div>
+        <div class="conf-bar-track"><div class="conf-bar-fill" id="confBar"></div></div>
+      </div>
+      <div class="tip-box" style="margin-top:12px;">
+        <span>💡 </span><span id="resultTip">—</span>
+      </div>
+    </div>
+  </div>
+
+  <canvas id="canvas"></canvas>
 
 <script>
-////////////////////////////////////////////////////////////////////////////////
-//  AUDIO UNLOCK — REQUIRED FOR SAFARI & CHROME
-////////////////////////////////////////////////////////////////////////////////
-document.body.addEventListener("click", function enableAudio() {
-    let a1 = document.getElementById("sound-detect");
-    let a2 = document.getElementById("sound-ewaste");
-    let a3 = document.getElementById("sound-not-ewaste");
+  const video       = document.getElementById("video");
+  const snapshot    = document.getElementById("snapshot");
+  const canvas      = document.getElementById("canvas");
+  const offMsg      = document.getElementById("offMsg");
+  const cameraWrap  = document.getElementById("cameraWrap");
+  const btnRow      = document.getElementById("btnRow");
+  const statusBadge = document.getElementById("statusBadge");
+  const resultCard  = document.getElementById("resultCard");
+  let stream = null;
 
-    if (a1) a1.play().catch(()=>{});
-    if (a2) a2.play().catch(()=>{});
-    if (a3) a3.play().catch(()=>{});
+  function setButtons(state) {
+    const map = {
+      idle:      `<button class="btn btn-start" onclick="startCamera()">📷 Start Camera</button>`,
+      live:      `<button class="btn btn-detect" onclick="captureAndDetect()">🔍 Detect Waste</button><button class="btn btn-stop" onclick="stopCamera()">⏹ Stop</button>`,
+      detecting: `<button class="btn btn-detect" disabled><span class="spinner"></span> Analyzing…</button>`,
+      done:      `<button class="btn btn-retake" onclick="startCamera()">🔄 Retake</button>`,
+    };
+    btnRow.innerHTML = map[state] || map.idle;
+  }
 
-    document.body.removeEventListener("click", enableAudio);
-});
+  function setStatus(type, html) {
+    const cls = {waiting:"badge-waiting",scanning:"badge-scanning",ewaste:"badge-ewaste",notewaste:"badge-notewaste",error:"badge-error"};
+    statusBadge.className = "status-badge " + (cls[type] || "badge-waiting");
+    statusBadge.innerHTML = html;
+  }
 
-////////////////////////////////////////////////////////////////////////////////
-//  CAMERA STREAM
-////////////////////////////////////////////////////////////////////////////////
-
-const video = document.getElementById("camera");
-navigator.mediaDevices.getUserMedia({ video: true })
-    .then(stream => video.srcObject = stream)
-    .catch(err => {
-        console.error("Camera error:", err);
-        alert("Camera access denied. Please allow camera permission.");
-    });
-
-// AUTO DETECT CONTROL
-let autoMode = false;
-let autoInterval = null;
-
-document.getElementById("autoToggle").addEventListener("change", function () {
-    autoMode = this.checked;
-
-    if (autoMode) {
-        const selectedItem = document.getElementById("item-select").value;
-        if (!selectedItem) {
-            alert("Please select an item first!");
-            this.checked = false;
-            autoMode = false;
-            return;
-        }
-        document.getElementById("subtext").innerText = "Auto-detecting every 1 second...";
-        startAutoDetect();
-    } else {
-        document.getElementById("subtext").innerText = "Manual mode enabled";
-        stopAutoDetect();
-    }
-});
-
-function startAutoDetect() {
-    stopAutoDetect();
-    autoInterval = setInterval(() => {
-        captureAndSend();
-    }, 1000);
-}
-
-function stopAutoDetect() {
-    if (autoInterval) {
-        clearInterval(autoInterval);
-        autoInterval = null;
-    }
-}
-
-// Manual Detect
-document.getElementById("detectButton").addEventListener("click", () => {
-    const selectedItem = document.getElementById("item-select").value;
-    
-    if (!selectedItem) {
-        alert("Please select an item first!");
-        return;
-    }
-    
-    captureAndSend();
-});
-
-////////////////////////////////////////////////////////////////////////////////
-// CAPTURE FRAME + SEND WITH SELECTED ITEM
-////////////////////////////////////////////////////////////////////////////////
-
-function captureAndSend() {
-    const canvas = document.getElementById("hiddenCanvas");
-    const selectedItem = document.getElementById("item-select").value;
-
-    if (!selectedItem) {
-        console.warn("No item selected, skipping detection");
-        return;
-    }
-
-    if (!video.videoWidth || !video.videoHeight) {
-        console.warn("Video not ready yet");
-        return;
-    }
-
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-
-    const ctx = canvas.getContext("2d");
-    ctx.drawImage(video, 0, 0);
-
-    const imageData = canvas.toDataURL("image/jpeg");
-
-    // Build form data
-    let bodyData = "image=" + encodeURIComponent(imageData);
-    bodyData += "&item=" + encodeURIComponent(selectedItem);
-
-    fetch("/api/camera-detect/", {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: bodyData
-    })
-    .then(res => res.json())
-    .then(data => {
-        console.log("Response:", data);
-        updateUI(data.detected, data.caption, selectedItem);
-    })
-    .catch(err => {
-        console.error("Error:", err);
-        updateUI("error", "connection_error", selectedItem);
-    });
-}
-
-////////////////////////////////////////////////////////////////////////////////
-// UI UPDATE + SOUND
-////////////////////////////////////////////////////////////////////////////////
-
-function updateUI(result, caption, itemName) {
-    const box = document.getElementById("result-box");
-    const name = document.getElementById("object-name");
-
-    if (!caption) caption = itemName || "unknown";
-
-    // Always play "object detected" sound
+  async function startCamera() {
+    resultCard.classList.remove("visible");
+    snapshot.style.display = "none";
+    video.style.display = "block";
+    offMsg.style.display = "none";
+    cameraWrap.classList.remove("scan-active");
     try {
-        let audio = document.getElementById("sound-detect");
-        if (audio) audio.play().catch(()=>{});
-    } catch (e) {}
-
-    if (result === "ewaste") {
-        box.className = "ewaste-box";
-        box.innerHTML = "♻️ EWASTE ✔";
-
-        try {
-            let audio = document.getElementById("sound-ewaste");
-            if (audio) audio.play().catch(()=>{});
-        } catch (e) {}
-    } else if (result === "error") {
-        box.className = "waiting-box";
-        box.innerHTML = "⚠️ ERROR";
-        name.innerText = `Object: ${itemName}`;
-    } else {
-        box.className = "not-ewaste-box";
-        box.innerHTML = "❌ NOT EWASTE";
-
-        try {
-            let audio = document.getElementById("sound-not-ewaste");
-            if (audio) audio.play().catch(()=>{});
-        } catch (e) {}
+      stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: "environment" }, width: { ideal: 1280 } }
+      });
+      video.srcObject = stream;
+      setButtons("live");
+      setStatus("scanning", "🎥 Live — point at an electronic item");
+    } catch(e) {
+      offMsg.style.display = "flex";
+      setStatus("error", "⚠️ Camera access denied");
+      setButtons("idle");
     }
+  }
 
-    name.innerText = `Object: ${caption}`;
-}
+  function stopCamera() {
+    if (stream) stream.getTracks().forEach(t => t.stop());
+    stream = null; video.srcObject = null;
+    video.style.display = "none"; offMsg.style.display = "flex";
+    cameraWrap.classList.remove("scan-active");
+    setButtons("idle"); setStatus("waiting", "⏳ Waiting for camera…");
+  }
+
+  async function captureAndDetect() {
+    if (!stream) return;
+    canvas.width  = video.videoWidth  || 640;
+    canvas.height = video.videoHeight || 480;
+    canvas.getContext("2d").drawImage(video, 0, 0);
+    const imageData = canvas.toDataURL("image/jpeg", 0.85);
+
+    snapshot.src = imageData;
+    snapshot.style.display = "block";
+    video.style.display = "none";
+    if (stream) stream.getTracks().forEach(t => t.stop());
+    stream = null;
+
+    cameraWrap.classList.add("scan-active");
+    setButtons("detecting");
+    setStatus("scanning", '<span class="spinner"></span> AI is analyzing…');
+    resultCard.classList.remove("visible");
+
+    try {
+      const res  = await fetch("/api/camera-detect/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ image: imageData }),
+      });
+      const data = await res.json();
+      cameraWrap.classList.remove("scan-active");
+      renderResult(data);
+    } catch(err) {
+      cameraWrap.classList.remove("scan-active");
+      setStatus("error", "⚠️ Network error — check connection");
+      setButtons("done");
+    }
+  }
+
+  function renderResult(data) {
+    setButtons("done");
+    if (!data.success) { setStatus("error", "⚠️ Detection failed — try again"); return; }
+    const r = data.result;
+
+    setStatus(data.detected === "ewaste" ? "ewaste" : "notewaste",
+              data.detected === "ewaste" ? "♻️ E-WASTE DETECTED ✔" : "❌ NOT E-WASTE");
+
+    document.getElementById("resultTitle").textContent = r.waste_type || "Unknown";
+
+    const tagEl  = document.getElementById("resultTag");
+    const tagMap = {
+      "E-Waste":    ["tag-ewaste",    "♻️ E-Waste"],
+      "Recyclable": ["tag-recycl",    "🔵 Recyclable"],
+      "Hazardous":  ["tag-hazardous", "⚠️ Hazardous"],
+      "Non-E-Waste":["tag-other",     "🚫 Non-E-Waste"],
+    };
+    const [cls, lbl] = tagMap[r.category] || ["tag-other", r.category || "—"];
+    tagEl.className = "tag " + cls; tagEl.textContent = lbl;
+
+    document.getElementById("statHazard").textContent = r.hazardous ? "⚠️ Yes" : "✅ No";
+    document.getElementById("statConf").textContent   = (r.confidence || 0) + "%";
+    document.getElementById("statReward").textContent = "+" + (r.reward_points || 0) + " pts";
+
+    const pct = Math.min(Math.max(r.confidence || 0, 0), 100);
+    document.getElementById("confBar").style.width = pct + "%";
+    document.getElementById("confPct").textContent  = pct + "%";
+    document.getElementById("resultTip").textContent = r.disposal_tip || "Drop at an authorised e-waste collection centre.";
+
+    resultCard.classList.add("visible");
+  }
 </script>
-
-<!-- AUDIO FILES (optional - if missing, app still works) -->
-<audio id="sound-detect" src="/static/sounds/object_detected.mp3"></audio>
-<audio id="sound-ewaste" src="/static/sounds/ewaste.mp3"></audio>
-<audio id="sound-not-ewaste" src="/static/sounds/not_ewaste.mp3"></audio>
-
 </body>
 </html>

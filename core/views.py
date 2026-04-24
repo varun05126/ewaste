@@ -1,8 +1,10 @@
 import base64
 import io
+import json
 
 from groq import Groq
 from PIL import Image
+import google.generativeai as genai
 
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
@@ -10,30 +12,14 @@ from django.shortcuts import render
 from django.conf import settings
 
 # ============================================================
-# CONFIGURE GROQ (TEXT ONLY)
+# CONFIGURE GROQ (TEXT ONLY — chatbot)
 # ============================================================
 groq_client = Groq(api_key=settings.GROQ_API_KEY)
 
-# Predefined e-waste items
-EWASTE_ITEMS = {
-    "phone": "smartphone",
-    "charger": "charger",
-    "laptop": "laptop",
-    "tablet": "tablet",
-    "headphones": "headphones",
-    "keyboard": "keyboard",
-    "mouse": "mouse",
-    "monitor": "monitor",
-    "cable": "cable",
-    "battery": "battery",
-    "powerbank": "powerbank",
-    "speaker": "speaker",
-    "camera": "camera",
-    "earbuds": "earbuds",
-    "adapter": "adapter",
-    "remote": "remote",
-    "webcam": "webcam",
-}
+# ============================================================
+# CONFIGURE GEMINI (VISION — waste detection)
+# ============================================================
+genai.configure(api_key=settings.GEMINI_API_KEY)
 
 # ============================================================
 # STATIC PAGE ROUTES
@@ -81,71 +67,88 @@ def ewaste_camera_page(request):
     return render(request, "ewaste-camera.html")
 
 # ============================================================
-# E-WASTE DETECTION - MANUAL SELECTION
+# E-WASTE DETECTION — GEMINI VISION AI
 # ============================================================
 @csrf_exempt
 def camera_ai_api(request):
     if request.method != "POST":
         return JsonResponse({"error": "Invalid request"}, status=400)
 
-    # Get either auto-detected item or manual selection
-    image_data = request.POST.get("image")
-    manual_item = request.POST.get("item")  # Manual selection from user
+    try:
+        body = json.loads(request.body)
+        image_data = body.get("image", "")
+    except (json.JSONDecodeError, AttributeError):
+        # Fallback: try form-encoded (legacy)
+        image_data = request.POST.get("image", "")
 
     # ---- Validate image ----
     if not image_data or "," not in image_data:
-        return JsonResponse(
-            {"detected": "error", "caption": "invalid-image"}, 
-            status=400
-        )
+        return JsonResponse({"error": "No valid image provided"}, status=400)
 
     try:
         header, base64_data = image_data.split(",", 1)
-
-        if not (
-            header.startswith("data:image/jpeg")
-            or header.startswith("data:image/png")
-        ):
-            return JsonResponse(
-                {"detected": "error", "caption": "unsupported-format"},
-                status=400,
-            )
-
         image_bytes = base64.b64decode(base64_data, validate=True)
 
         if len(image_bytes) < 4000:
-            return JsonResponse(
-                {"detected": "error", "caption": "too-small-image"},
-                status=400,
-            )
+            return JsonResponse({"error": "Image too small or blank"}, status=400)
 
-        # Validate image
-        img = Image.open(io.BytesIO(image_bytes)).convert("RGB")
+        pil_image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
 
     except Exception:
-        return JsonResponse(
-            {"detected": "error", "caption": "bad-image-data"},
-            status=400,
-        )
+        return JsonResponse({"error": "Bad image data"}, status=400)
 
-    # Use manual selection if provided, otherwise use a placeholder
-    if manual_item and manual_item in EWASTE_ITEMS:
-        caption = manual_item.lower()
-    else:
-        # Default: ask user to select manually
-        caption = "unknown"
+    # ---- Send to Gemini Vision ----
+    try:
+        model = genai.GenerativeModel("gemini-1.5-flash")
 
-    # ---- Check if electronic (e-waste) ----
-    ewaste_keywords = list(EWASTE_ITEMS.keys()) + [
-        "mobile", "smartphone", "wire", "usb", "airpods",
-        "gadget", "device", "electronic", "tech",
-    ]
+        prompt = """
+You are an expert e-waste classifier. Look at this image and identify what electronic waste item is shown.
 
-    detected = "ewaste" if any(k in caption for k in ewaste_keywords) else "not-ewaste"
+Respond ONLY with a valid JSON object — no markdown, no extra text, no code fences:
+{
+  "waste_type": "<specific item name, e.g. Smartphone, Laptop, PCB, Battery, Charger, Cable, Monitor, Keyboard, Mouse, Earbuds, Printer, Webcam, Remote Control, Power Bank>",
+  "category": "<one of: E-Waste, Recyclable, Hazardous, Non-E-Waste>",
+  "hazardous": <true or false>,
+  "confidence": <integer 0 to 100>,
+  "disposal_tip": "<one concise sentence on safe disposal>",
+  "reward_points": <integer 5 to 50 based on item complexity>,
+  "is_ewaste": <true if this is electronic waste, false otherwise>
+}
 
-    return JsonResponse(
-        {"detected": detected, "caption": caption}
-    )
+If no electronic item is visible, set waste_type to "Unknown", is_ewaste to false, category to "Non-E-Waste".
+"""
+        response = model.generate_content([prompt, pil_image])
+        raw = response.text.strip()
+
+        # Strip any accidental markdown fences
+        if raw.startswith("```"):
+            raw = raw.split("```")[1]
+            if raw.startswith("json"):
+                raw = raw[4:]
+        raw = raw.strip()
+
+        result = json.loads(raw)
+
+        return JsonResponse({
+            "success": True,
+            "detected": "ewaste" if result.get("is_ewaste") else "not-ewaste",
+            "caption": result.get("waste_type", "Unknown"),
+            "result": result,
+        })
+
+    except json.JSONDecodeError:
+        return JsonResponse({
+            "success": False,
+            "detected": "error",
+            "caption": "AI parse error",
+            "raw": raw,
+        }, status=500)
+    except Exception as e:
+        return JsonResponse({
+            "success": False,
+            "detected": "error",
+            "caption": str(e),
+        }, status=500)
 
 # ============================================================
 # CHATBOT USING GROQ TEXT
