@@ -258,7 +258,11 @@
 
   function renderResult(data) {
     setButtons("done");
-    if (!data.success) { setStatus("error", "⚠️ Detection failed — try again"); return; }
+    if (!data.success) {
+      const msg = data.error || "Detection failed — try again";
+      setStatus("error", "⚠️ " + msg);
+      return;
+    }
     const r = data.result;
 
     setStatus(data.detected === "ewaste" ? "ewaste" : "notewaste",

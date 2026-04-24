@@ -97,35 +97,55 @@ def camera_ai_api(request):
     except Exception:
         return JsonResponse({"error": "Bad image data"}, status=400)
 
+    # ---- Check API key is configured ----
+    if not settings.GEMINI_API_KEY:
+        return JsonResponse({
+            "success": False,
+            "detected": "error",
+            "error": "GEMINI_API_KEY is not set in environment variables.",
+        }, status=500)
+
     # ---- Send to Gemini Vision ----
+    raw = ""
     try:
         model = genai.GenerativeModel("gemini-1.5-flash")
 
-        prompt = """
-You are an expert e-waste classifier. Look at this image and identify what electronic waste item is shown.
+        prompt = (
+            "You are an expert e-waste classifier. Analyze this image.\n\n"
+            "Reply with ONLY a raw JSON object — absolutely no markdown, no code fences, no extra text:\n"
+            '{"waste_type":"<name>","category":"<E-Waste|Recyclable|Hazardous|Non-E-Waste>",'
+            '"hazardous":<true|false>,"confidence":<0-100>,'
+            '"disposal_tip":"<one sentence>","reward_points":<5-50>,"is_ewaste":<true|false>}\n\n'
+            "If no electronic item is visible: waste_type=Unknown, is_ewaste=false, category=Non-E-Waste."
+        )
 
-Respond ONLY with a valid JSON object — no markdown, no extra text, no code fences:
-{
-  "waste_type": "<specific item name, e.g. Smartphone, Laptop, PCB, Battery, Charger, Cable, Monitor, Keyboard, Mouse, Earbuds, Printer, Webcam, Remote Control, Power Bank>",
-  "category": "<one of: E-Waste, Recyclable, Hazardous, Non-E-Waste>",
-  "hazardous": <true or false>,
-  "confidence": <integer 0 to 100>,
-  "disposal_tip": "<one concise sentence on safe disposal>",
-  "reward_points": <integer 5 to 50 based on item complexity>,
-  "is_ewaste": <true if this is electronic waste, false otherwise>
-}
+        # Convert PIL image to bytes for Gemini inline_data
+        buf = io.BytesIO()
+        pil_image.save(buf, format="JPEG", quality=85)
+        img_bytes = buf.getvalue()
 
-If no electronic item is visible, set waste_type to "Unknown", is_ewaste to false, category to "Non-E-Waste".
-"""
-        response = model.generate_content([prompt, pil_image])
+        response = model.generate_content([
+            prompt,
+            {"mime_type": "image/jpeg", "data": img_bytes},
+        ])
         raw = response.text.strip()
 
         # Strip any accidental markdown fences
-        if raw.startswith("```"):
-            raw = raw.split("```")[1]
-            if raw.startswith("json"):
-                raw = raw[4:]
-        raw = raw.strip()
+        if "```" in raw:
+            parts = raw.split("```")
+            for part in parts:
+                part = part.strip()
+                if part.startswith("json"):
+                    part = part[4:].strip()
+                if part.startswith("{"):
+                    raw = part
+                    break
+
+        # Find the JSON object within the response
+        start = raw.find("{")
+        end   = raw.rfind("}") + 1
+        if start != -1 and end > start:
+            raw = raw[start:end]
 
         result = json.loads(raw)
 
@@ -136,18 +156,19 @@ If no electronic item is visible, set waste_type to "Unknown", is_ewaste to fals
             "result": result,
         })
 
-    except json.JSONDecodeError:
+    except json.JSONDecodeError as e:
+        print(f"[EWASTE] Gemini JSON parse error: {e} | raw: {raw!r}")
         return JsonResponse({
             "success": False,
             "detected": "error",
-            "caption": "AI parse error",
-            "raw": raw,
+            "error": f"AI returned unparseable response: {raw[:200]}",
         }, status=500)
     except Exception as e:
+        print(f"[EWASTE] Gemini error: {type(e).__name__}: {e}")
         return JsonResponse({
             "success": False,
             "detected": "error",
-            "caption": str(e),
+            "error": f"{type(e).__name__}: {str(e)}",
         }, status=500)
 
 # ============================================================
