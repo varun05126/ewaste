@@ -221,6 +221,8 @@ footer {
   .form-card { width: 100%; }
   #map { height: 320px; }
 }
+  /* Hide Leaflet's own location error overlay */
+  .leaflet-popup-content-wrapper { max-width: 280px; }
 </style>
 </head>
 <body>
@@ -296,7 +298,7 @@ footer {
       <p>Click anywhere on the map to pin your address — it will auto-fill above.</p>
     </div>
     <div id="map"></div>
-    <div class="map-badge" id="mapBadge">🗺️ Click on map to select location</div>
+    <div class="map-badge" id="mapBadge">🗺️ Click on map to pin your pickup location</div>
   </div>
 
 </div>
@@ -360,6 +362,9 @@ footer {
     reverseGeocode(e.latlng.lat, e.latlng.lng);
   });
 
+  // Suppress Leaflet's own location error popup
+  map.on("locationerror", function() {});
+
   // ── Locate Me button ──
   function locateMe() {
     const btn     = document.getElementById("locateBtn");
@@ -382,11 +387,12 @@ footer {
         reverseGeocode(lat, lng);
         reset();
       },
-      function() {
-        document.getElementById("mapBadge").textContent = "⚠️ Location access denied";
+      function(err) {
+        document.getElementById("mapBadge").textContent = "🗺️ Click on map to select location";
+        document.getElementById("locateBtn").title = "Use HTTPS or allow location in browser settings";
         reset();
       },
-      { timeout: 10000 }
+      { timeout: 10000, enableHighAccuracy: true }
     );
 
     function reset() {
