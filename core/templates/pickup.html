@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Request Pickup - E-Waste Management System</title>
+<title>E-Waste Management</title>
 {% load static %}
 <link rel="stylesheet" href="{% static 'styles.css' %}">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -266,7 +266,7 @@ footer {
 
       <div class="form-group">
         <label for="phone">Phone Number</label>
-        <input type="tel" id="phone" name="phone" placeholder="+91 98765 43210" required>
+        <input type="tel" id="phone" name="phone" placeholder="Enter your phone number" required>
       </div>
 
       <div class="form-group">
@@ -310,9 +310,10 @@ footer {
   // ── Init map centred on Hyderabad ──
   const map = L.map("map", { zoomControl: true }).setView([17.385, 78.4867], 12);
 
-  L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
-    attribution: '© <a href="https://openstreetmap.org">OpenStreetMap</a> © <a href="https://carto.com">CARTO</a>',
+  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    attribution: '© <a href="https://openstreetmap.org">OpenStreetMap</a>',
     maxZoom: 19,
+    crossOrigin: true,
   }).addTo(map);
 
   // Custom green marker
