@@ -147,7 +147,7 @@ margin-top: 20px;
     <p>Fill in your details and schedule a pickup for your e-waste.</p>
     
     <!-- FORM REDIRECTS TO REQS PAGE AFTER SUBMISSION -->
-    <form action="{% url 'reqs' %}" method="post">
+    <form action="{% url 'pickup' %}" method="post">
         {% csrf_token %}
         
         <label for="name">Full Name:</label>

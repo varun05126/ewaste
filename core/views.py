@@ -28,12 +28,19 @@ def signup(request):          return render(request, "signup.html")
 def pickup(request):
     if request.method == "POST":
         from .models import PickupRequest
-        PickupRequest.objects.create(
-            name    = request.POST.get("name", "").strip(),
-            email   = request.POST.get("email", "").strip(),
-            phone   = request.POST.get("phone", "").strip(),
-            address = request.POST.get("address", "").strip(),
-        )
+        import sys
+        name    = request.POST.get("name", "").strip()
+        email   = request.POST.get("email", "").strip()
+        phone   = request.POST.get("phone", "").strip()
+        address = request.POST.get("address", "").strip()
+        print(f"[PICKUP] Saving: name={name} email={email} phone={phone}", file=sys.stderr)
+        try:
+            obj = PickupRequest.objects.create(
+                name=name, email=email, phone=phone, address=address,
+            )
+            print(f"[PICKUP] Saved with id={obj.id}", file=sys.stderr)
+        except Exception as e:
+            print(f"[PICKUP] ERROR saving: {e}", file=sys.stderr)
         from django.http import HttpResponseRedirect
         return HttpResponseRedirect("/reqs/")
     return render(request, "pickup.html")
