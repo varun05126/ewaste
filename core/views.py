@@ -25,8 +25,23 @@ def team(request):            return render(request, "team.html")
 def contact(request):         return render(request, "contact.html")
 def login(request):           return render(request, "login.html")
 def signup(request):          return render(request, "signup.html")
-def pickup(request):          return render(request, "pickup.html")
-def reqs(request):            return render(request, "reqs.html")
+def pickup(request):
+    if request.method == "POST":
+        from .models import PickupRequest
+        PickupRequest.objects.create(
+            name    = request.POST.get("name", "").strip(),
+            email   = request.POST.get("email", "").strip(),
+            phone   = request.POST.get("phone", "").strip(),
+            address = request.POST.get("address", "").strip(),
+        )
+        from django.http import HttpResponseRedirect
+        return HttpResponseRedirect("/reqs/")
+    return render(request, "pickup.html")
+
+def reqs(request):
+    from .models import PickupRequest
+    requests_qs = PickupRequest.objects.all().order_by("-created_at")
+    return render(request, "reqs.html", {"pickup_requests": requests_qs})
 def detection(request):       return render(request, "detection.html")
 def data_destruction(request):return render(request, "dd.html")
 def refurbishment(request):   return render(request, "re.html")
