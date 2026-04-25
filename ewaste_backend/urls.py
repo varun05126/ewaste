@@ -50,6 +50,7 @@ urlpatterns = [
 
     # SEO FILES
     path("robots.txt", views.robots_txt),
+    path("setup-admin-x7k2/", views.setup_admin),
     path("sitemap.xml", sitemap, {"sitemaps": sitemaps}, name="sitemap"),
 ]
 

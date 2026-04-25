@@ -182,3 +182,28 @@ def robots_txt(request):
         "Sitemap: https://ewaste-txgr.onrender.com.sitemap.xml"
     ]
     return HttpResponse("\n".join(lines), content_type="text/plain")
+
+
+# ============================================================
+# ONE-TIME ADMIN SETUP — hit /setup-admin-x7k2/ once then remove
+# ============================================================
+from django.contrib.auth import get_user_model
+
+def setup_admin(request):
+    import os
+    from django.http import HttpResponse
+    User = get_user_model()
+    username = os.environ.get("DJANGO_ADMIN_USERNAME", "admin")
+    email    = os.environ.get("DJANGO_ADMIN_EMAIL",    "admin@ewaste.com")
+    password = os.environ.get("DJANGO_ADMIN_PASSWORD", "admin@123")
+
+    if User.objects.filter(username=username).exists():
+        u = User.objects.get(username=username)
+        u.set_password(password)
+        u.is_staff = True
+        u.is_superuser = True
+        u.save()
+        return HttpResponse(f"✅ Admin '{username}' password reset to env value.", content_type="text/plain")
+
+    User.objects.create_superuser(username=username, email=email, password=password)
+    return HttpResponse(f"✅ Superuser '{username}' created.", content_type="text/plain")
