@@ -4,11 +4,15 @@ from .models import PickupRequest, ContactMessage
 
 @admin.register(PickupRequest)
 class PickupRequestAdmin(admin.ModelAdmin):
-    list_display  = ('name', 'email', 'phone', 'short_address', 'created_at')
+    list_display  = ('name', 'email', 'phone', 'short_address', 'has_location', 'created_at')
     list_filter   = ('created_at',)
     search_fields = ('name', 'email', 'phone', 'address')
     readonly_fields = ('created_at',)
     ordering      = ('-created_at',)
+
+    def has_location(self, obj):
+        return "📍" if obj.latitude else "—"
+    has_location.short_description = "Map"
 
     def short_address(self, obj):
         return obj.address[:60] + "…" if len(obj.address) > 60 else obj.address

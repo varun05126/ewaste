@@ -6,178 +6,395 @@
 <title>Request Pickup - E-Waste Management</title>
 {% load static %}
 <link rel="stylesheet" href="{% static 'styles.css' %}">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
 body {
-font-family: Arial, sans-serif;
-margin: 0;
-padding: 0;
-background-color: #f4f4f4;
-color: #333;
-text-align: center;
+  font-family: Arial, sans-serif;
+  background: #f4f6f9;
+  color: #333;
 }
+
 nav {
-background-color: #2c3e50;
-padding: 10px 0;
+  background-color: #2c3e50;
+  padding: 10px 0;
 }
-
 nav .logo {
-color: #fff;
-font-size: 24px;
-text-align: center;
-font-weight: bold;
+  color: #fff;
+  font-size: 24px;
+  text-align: center;
+  font-weight: bold;
 }
-
 nav ul {
-list-style-type: none;
-padding: 0;
-text-align: center;
+  list-style: none;
+  padding: 0;
+  text-align: center;
 }
-
 nav ul li {
-display: inline;
-margin: 0 20px;
+  display: inline;
+  margin: 0 20px;
 }
-
 nav ul li a {
-color: #fff;
-text-decoration: none;
-font-size: 18px;
-padding: 10px 20px;
-transition: background-color 0.3s;
+  color: #fff;
+  text-decoration: none;
+  font-size: 18px;
+  padding: 10px 20px;
+  transition: background-color 0.3s;
 }
-
 nav ul li a:hover {
-background-color: #16a085;
-border-radius: 5px;
+  background-color: #16a085;
+  border-radius: 5px;
 }
 
-.pickup-container {
-max-width: 600px;
-margin: 40px auto;
-background: #fff;
-padding: 20px;
-border-radius: 10px;
-box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+.page-wrap {
+  display: flex;
+  gap: 24px;
+  max-width: 1100px;
+  margin: 36px auto;
+  padding: 0 16px 40px;
+  align-items: flex-start;
 }
 
-form {
-display: flex;
-flex-direction: column;
+/* ── Form card ── */
+.form-card {
+  background: #fff;
+  border-radius: 14px;
+  box-shadow: 0 2px 16px rgba(0,0,0,0.08);
+  padding: 28px 24px;
+  width: 380px;
+  flex-shrink: 0;
+}
+.form-card h2 {
+  font-size: 20px;
+  font-weight: 800;
+  color: #1a1a2e;
+  margin-bottom: 4px;
+}
+.form-card p {
+  font-size: 13px;
+  color: #64748b;
+  margin-bottom: 20px;
 }
 
-label {
-text-align: left;
-font-weight: bold;
-margin-top: 10px;
+.form-group {
+  margin-bottom: 14px;
+}
+.form-group label {
+  display: block;
+  font-size: 13px;
+  font-weight: 700;
+  color: #374151;
+  margin-bottom: 5px;
+}
+.form-group input,
+.form-group textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 14px;
+  color: #1a1a2e;
+  background: #f8fafc;
+  transition: border-color 0.2s;
+  resize: vertical;
+}
+.form-group input:focus,
+.form-group textarea:focus {
+  outline: none;
+  border-color: #16a34a;
+  background: #fff;
 }
 
-input, textarea {
-margin: 10px 0;
-padding: 10px;
-font-size: 16px;
-border: 1px solid #ccc;
-border-radius: 5px;
+.map-hint {
+  font-size: 12px;
+  color: #16a34a;
+  margin-top: 4px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
-button {
-background: #3498db;
-color: #fff;
-padding: 10px;
-border: none;
-border-radius: 5px;
-cursor: pointer;
-margin-top: 15px;
-font-weight: bold;
-font-size: 16px;
+.btn-locate {
+  width: 100%;
+  padding: 10px;
+  background: #f0fdf4;
+  border: 1.5px solid #86efac;
+  border-radius: 8px;
+  color: #15803d;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: background 0.2s;
+}
+.btn-locate:hover { background: #dcfce7; }
+
+.btn-submit {
+  width: 100%;
+  padding: 13px;
+  background: #16a34a;
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  font-size: 16px;
+  font-weight: 800;
+  cursor: pointer;
+  margin-top: 6px;
+  transition: background 0.2s, transform 0.1s;
+}
+.btn-submit:hover { background: #15803d; }
+.btn-submit:active { transform: scale(0.98); }
+
+/* ── Map card ── */
+.map-card {
+  flex: 1;
+  background: #fff;
+  border-radius: 14px;
+  box-shadow: 0 2px 16px rgba(0,0,0,0.08);
+  overflow: hidden;
+  min-height: 500px;
+  position: relative;
 }
 
-button:hover {
-background: #2980b9;
+.map-header {
+  padding: 16px 20px 12px;
+  border-bottom: 1px solid #e2e8f0;
+}
+.map-header h3 {
+  font-size: 15px;
+  font-weight: 700;
+  color: #1a1a2e;
+  margin-bottom: 2px;
+}
+.map-header p {
+  font-size: 12px;
+  color: #94a3b8;
 }
 
-.map-container {
-margin-top: 20px;
+#map {
+  height: 460px;
+  width: 100%;
 }
 
-iframe {
-width: 100%;
-height: 300px;
-border-radius: 10px;
+.map-badge {
+  position: absolute;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(255,255,255,0.95);
+  border: 1px solid #e2e8f0;
+  border-radius: 20px;
+  padding: 6px 14px;
+  font-size: 12px;
+  color: #475569;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  pointer-events: none;
+  white-space: nowrap;
+  z-index: 1000;
 }
+
+/* loading spinner on locate */
+.spinner {
+  width: 16px; height: 16px;
+  border: 2px solid #86efac;
+  border-top-color: #16a34a;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  display: none;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
 
 footer {
-background: #2c3e50;
-color: #fff;
-text-align: center;
-padding: 10px 0;
-margin-top: 20px;
+  background: #2c3e50;
+  color: #fff;
+  text-align: center;
+  padding: 14px 0;
+}
+
+@media (max-width: 768px) {
+  .page-wrap { flex-direction: column; }
+  .form-card { width: 100%; }
+  #map { height: 320px; }
 }
 </style>
 </head>
 <body>
-<nav>
-    <div class="logo">E-Waste</div>
-    <ul>
-        <li><a href="{% url 'homepage' %}">Home</a></li>
-        <li><a href="{% url 'services' %}">Services</a></li>
-        <li><a href="{% url 'about' %}">About</a></li>
-        <li><a href="{% url 'team' %}">Team</a></li>
-        <li><a href="{% url 'contact' %}">Contact</a></li>
-        <li><a href="{% url 'login' %}">Login</a></li>
-        <li><a href="{% url 'signup' %}">Signup</a></li>
 
-        <!-- 📷 CAMERA AI DETECTION BUTTON -->
-        <li>
-            <a href="{% url 'ewaste_camera_page' %}"
-               style="
-                   padding: 8px 14px;
-                   background:#28a745;
-                   color:white;
-                   border-radius:6px;
-                   font-weight:bold;
-               ">
-               📷 Detect E-Waste
-            </a>
-        </li>
-    </ul>
+<nav>
+  <div class="logo">E-Waste</div>
+  <ul>
+    <li><a href="{% url 'homepage' %}">Home</a></li>
+    <li><a href="{% url 'services' %}">Services</a></li>
+    <li><a href="{% url 'about' %}">About</a></li>
+    <li><a href="{% url 'team' %}">Team</a></li>
+    <li><a href="{% url 'contact' %}">Contact</a></li>
+    <li><a href="{% url 'login' %}">Login</a></li>
+    <li><a href="{% url 'signup' %}">Signup</a></li>
+    <li>
+      <a href="{% url 'ewaste_camera_page' %}"
+         style="padding:8px 14px;background:#28a745;color:white;border-radius:6px;font-weight:bold;">
+        📷 Detect E-Waste
+      </a>
+    </li>
+  </ul>
 </nav>
 
-<div class="pickup-container">
-    <h2>Request an E-Waste Pickup</h2>
-    <p>Fill in your details and schedule a pickup for your e-waste.</p>
-    
-    <!-- FORM REDIRECTS TO REQS PAGE AFTER SUBMISSION -->
-    <form action="{% url 'pickup' %}" method="post">
-        {% csrf_token %}
-        
-        <label for="name">Full Name:</label>
-        <input type="text" id="name" name="name" required>
-        
-        <label for="email">Email:</label>
-        <input type="email" id="email" name="email" required>
-        
-        <label for="phone">Phone Number:</label>
-        <input type="tel" id="phone" name="phone" required>
-        
-        <label for="address">Pickup Address:</label>
-        <textarea id="address" name="address" rows="3" required></textarea>
-        
-        <button type="submit">Request Pickup</button>
-    </form>
+<div class="page-wrap">
 
-    <div class="map-container">
-        <h3>Find Us on Google & Apple Maps</h3>
-        <iframe
-        src="https://www.google.com/maps/embed/v1/place?key=AIzaSyDsaa3g9zPaUofnBnAVCoFm-kyxVOxhfyE&q=E-Waste+Management"
-        allowfullscreen>
-        </iframe>
-        <br>
-        <a href="https://maps.apple.com/?q=E-Waste+Management" target="_blank">View on Apple Maps</a>
+  <!-- ── Form ── -->
+  <div class="form-card">
+    <h2>♻️ Request E-Waste Pickup</h2>
+    <p>Fill in your details or pin your location on the map.</p>
+
+    <form action="{% url 'pickup' %}" method="post" id="pickupForm">
+      {% csrf_token %}
+
+      <div class="form-group">
+        <label for="name">Full Name</label>
+        <input type="text" id="name" name="name" placeholder="Varun Kumar" required>
+      </div>
+
+      <div class="form-group">
+        <label for="email">Email</label>
+        <input type="email" id="email" name="email" placeholder="you@example.com" required>
+      </div>
+
+      <div class="form-group">
+        <label for="phone">Phone Number</label>
+        <input type="tel" id="phone" name="phone" placeholder="+91 98765 43210" required>
+      </div>
+
+      <div class="form-group">
+        <label for="address">Pickup Address</label>
+        <textarea id="address" name="address" rows="3"
+          placeholder="Click the map or use Locate Me to auto-fill…" required></textarea>
+        <div class="map-hint">📍 Click anywhere on the map to set your address</div>
+      </div>
+
+      <!-- Hidden lat/lng -->
+      <input type="hidden" id="lat" name="lat">
+      <input type="hidden" id="lng" name="lng">
+
+      <button type="button" class="btn-locate" onclick="locateMe()" id="locateBtn">
+        <span class="spinner" id="locateSpinner"></span>
+        <span id="locateTxt">📡 Locate Me Automatically</span>
+      </button>
+
+      <button type="submit" class="btn-submit">🚛 Request Pickup</button>
+    </form>
+  </div>
+
+  <!-- ── Map ── -->
+  <div class="map-card">
+    <div class="map-header">
+      <h3>📍 Select Pickup Location</h3>
+      <p>Click anywhere on the map to pin your address — it will auto-fill above.</p>
     </div>
+    <div id="map"></div>
+    <div class="map-badge" id="mapBadge">🗺️ Click on map to select location</div>
+  </div>
+
 </div>
 
 <footer>
-    <p>&copy; 2025 E-Waste Management. All rights reserved.</p>
+  <p>&copy; 2025 E-Waste Management. All rights reserved.</p>
 </footer>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+  // ── Init map centred on Hyderabad ──
+  const map = L.map("map", { zoomControl: true }).setView([17.385, 78.4867], 12);
+
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    attribution: '© <a href="https://openstreetmap.org">OpenStreetMap</a>',
+    maxZoom: 19,
+  }).addTo(map);
+
+  // Custom green marker
+  const greenIcon = L.icon({
+    iconUrl: "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png",
+    shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
+    iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41],
+  });
+
+  let marker = null;
+
+  function placeMarker(lat, lng) {
+    if (marker) map.removeLayer(marker);
+    marker = L.marker([lat, lng], { icon: greenIcon, draggable: true }).addTo(map);
+    marker.on("dragend", function(e) {
+      const pos = e.target.getLatLng();
+      reverseGeocode(pos.lat, pos.lng);
+    });
+    document.getElementById("lat").value = lat.toFixed(6);
+    document.getElementById("lng").value = lng.toFixed(6);
+  }
+
+  async function reverseGeocode(lat, lng) {
+    document.getElementById("mapBadge").textContent = "⏳ Getting address…";
+    try {
+      const res  = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`,
+        { headers: { "Accept-Language": "en" } }
+      );
+      const data = await res.json();
+      const addr = data.display_name || `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+      document.getElementById("address").value = addr;
+      document.getElementById("mapBadge").textContent = "✅ Location selected";
+      placeMarker(lat, lng);
+      marker.bindPopup(`<b>Pickup here</b><br>${addr}`).openPopup();
+    } catch {
+      document.getElementById("address").value = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+      document.getElementById("mapBadge").textContent = "📍 Location pinned";
+    }
+  }
+
+  // Click on map → place marker + reverse geocode
+  map.on("click", function(e) {
+    reverseGeocode(e.latlng.lat, e.latlng.lng);
+  });
+
+  // ── Locate Me button ──
+  function locateMe() {
+    const btn     = document.getElementById("locateBtn");
+    const spinner = document.getElementById("locateSpinner");
+    const txt     = document.getElementById("locateTxt");
+
+    spinner.style.display = "inline-block";
+    txt.textContent = "Locating…";
+    btn.disabled = true;
+
+    if (!navigator.geolocation) {
+      alert("Geolocation not supported by your browser.");
+      reset(); return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      function(pos) {
+        const { latitude: lat, longitude: lng } = pos.coords;
+        map.setView([lat, lng], 16);
+        reverseGeocode(lat, lng);
+        reset();
+      },
+      function() {
+        document.getElementById("mapBadge").textContent = "⚠️ Location access denied";
+        reset();
+      },
+      { timeout: 10000 }
+    );
+
+    function reset() {
+      spinner.style.display = "none";
+      txt.textContent = "📡 Locate Me Automatically";
+      btn.disabled = false;
+    }
+  }
+</script>
+
 </body>
 </html>

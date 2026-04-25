@@ -8,6 +8,8 @@ class PickupRequest(models.Model):
     email = models.EmailField()
     phone = models.CharField(max_length=15) # Changed from phone_number, simplified max_length
     address = models.TextField() # Consolidated address fields into one
+    latitude  = models.FloatField(null=True, blank=True)
+    longitude = models.FloatField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

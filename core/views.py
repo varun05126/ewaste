@@ -35,8 +35,12 @@ def pickup(request):
         address = request.POST.get("address", "").strip()
         print(f"[PICKUP] Saving: name={name} email={email} phone={phone}", file=sys.stderr)
         try:
-            obj = PickupRequest.objects.create(
+            lat = request.POST.get("lat") or None
+        lng = request.POST.get("lng") or None
+        obj = PickupRequest.objects.create(
                 name=name, email=email, phone=phone, address=address,
+                latitude=float(lat) if lat else None,
+                longitude=float(lng) if lng else None,
             )
             print(f"[PICKUP] Saved with id={obj.id}", file=sys.stderr)
         except Exception as e:
@@ -243,8 +247,12 @@ def pickup(request):
         address = request.POST.get("address", "").strip()
         print(f"[PICKUP] Saving: name={name} email={email} phone={phone}", file=sys.stderr)
         try:
-            obj = PickupRequest.objects.create(
+            lat = request.POST.get("lat") or None
+        lng = request.POST.get("lng") or None
+        obj = PickupRequest.objects.create(
                 name=name, email=email, phone=phone, address=address,
+                latitude=float(lat) if lat else None,
+                longitude=float(lng) if lng else None,
             )
             print(f"[PICKUP] Saved with id={obj.id}", file=sys.stderr)
         except Exception as e:
