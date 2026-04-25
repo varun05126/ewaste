@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Request Pickup - E-Waste Management</title>
+<title>Request Pickup - E-Waste Management System</title>
 {% load static %}
 <link rel="stylesheet" href="{% static 'styles.css' %}">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -256,7 +256,7 @@ footer {
 
       <div class="form-group">
         <label for="name">Full Name</label>
-        <input type="text" id="name" name="name" placeholder="Varun Kumar" required>
+        <input type="text" id="name" name="name" placeholder="Enter your full name" required>
       </div>
 
       <div class="form-group">
@@ -310,8 +310,8 @@ footer {
   // ── Init map centred on Hyderabad ──
   const map = L.map("map", { zoomControl: true }).setView([17.385, 78.4867], 12);
 
-  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-    attribution: '© <a href="https://openstreetmap.org">OpenStreetMap</a>',
+  L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
+    attribution: '© <a href="https://openstreetmap.org">OpenStreetMap</a> © <a href="https://carto.com">CARTO</a>',
     maxZoom: 19,
   }).addTo(map);
 
